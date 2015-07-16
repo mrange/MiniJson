@@ -1,0 +1,102 @@
+﻿{
+module MiniJson.Internal.Lexer
+
+open System
+open System.Globalization
+open System.Text
+open Microsoft.FSharp.Text.Lexing
+
+type Lexbuf = LexBuffer<char>
+
+let lexeme (lexbuf : Lexbuf) = Lexbuf.LexemeString lexbuf
+
+let inline ch (sb : StringBuilder) (c : char) = ignore <| sb.Append c
+
+let asInt_ i (lexbuf : Lexbuf) =
+  let ch = lexbuf.LexemeChar i
+  if ch >= '0' && ch <= '9'   then (int ch - int '0')
+  elif ch >= 'A' && ch <= 'F' then (int ch - int 'A' + 10)
+  elif ch >= 'a' && ch <= 'f' then (int ch - int 'a' + 10)
+  else 0
+
+let asInt lexbuf = asInt_ 0 lexbuf
+}
+
+let esc         = '\\'
+let stringchar  = [^'\n' '\r' '\\' '"']
+let anychar     = [^'\n' '\r']
+let minus       = '-'
+let zero        = '0'
+let sign        = ['+' '-']
+let digit       = ['0'-'9']
+let digit19     = ['1'-'9']
+let int         = minus? digit19 digit*
+let frac        = '.' digit*
+let exp         = ['e' 'E'] sign? digit+
+let float       = int frac? exp?
+let hexdigit    = ['0'-'9'] | ['A'-'F'] | ['a'-'f']
+let whitespace  = [' ' '\t']
+
+rule tokenstream = parse
+// --------------------------
+| ','           { Parser.V_SEP                            }
+| ':'           { Parser.KV_SEP                           }
+| "true"        { Parser.TRUE_V                           }
+| "false"       { Parser.FALSE_V                          }
+| "null"        { Parser.NULL_V                           }
+| '{'           { Parser.O_BEGIN                          }
+| '}'           { Parser.O_END                            }
+| '['           { Parser.A_BEGIN                          }
+| ']'           { Parser.A_END                            }
+| '"'
+  {
+    jsonString (StringBuilder ()) lexbuf
+  }
+| zero          { Parser.NUMBER_V 0.0                     }
+| minus zero    { Parser.NUMBER_V -0.0                    }
+| float
+  {
+    // TODO: For performance shouldn't create substring
+    let f = Double.Parse (lexeme lexbuf, NumberStyles.Float, CultureInfo.InvariantCulture)
+    Parser.NUMBER_V f
+  }
+| minus         { Parser.LEX_ERROR "NUMBER"               }
+// --------------------------
+| "/*"          { jsonComment lexbuf                      }
+| "//" anychar* { tokenstream lexbuf                      }
+// --------------------------
+| whitespace    { tokenstream lexbuf                      }
+| eof           { Parser.EOF                              }
+| _             { Parser.LEX_ERROR "TOKEN"                }
+// --------------------------
+and jsonString sb = parse
+// --------------------------
+| stringchar    {
+                  ignore <| sb.Append (lexbuf.LexemeChar 0)
+                  jsonString sb lexbuf
+                }
+| '"'           { Parser.STRING_V (sb.ToString ())        }
+| esc esc       { ch sb '\\'; jsonString sb lexbuf        }
+| esc '/'       { ch sb '/' ; jsonString sb lexbuf        }
+| esc 'b'       { ch sb '\b'; jsonString sb lexbuf        }
+| esc 'f'       { ch sb '\f'; jsonString sb lexbuf        }
+| esc 'n'       { ch sb '\n'; jsonString sb lexbuf        }
+| esc 'r'       { ch sb '\r'; jsonString sb lexbuf        }
+| esc 't'       { ch sb '\t'; jsonString sb lexbuf        }
+| esc 'u' hexdigit hexdigit hexdigit hexdigit
+  {
+    let v0 = asInt_ 2 lexbuf
+    let v1 = asInt_ 3 lexbuf
+    let v2 = asInt_ 4 lexbuf
+    let v3 = asInt_ 5 lexbuf
+    ch sb <| char ((v0 <<< 12) + (v1 <<< 8) + (v2 <<< 4) + v3)
+    jsonString sb lexbuf
+  }
+| _             { Parser.LEX_ERROR "STRING"               }
+// --------------------------
+and jsonComment = parse
+// --------------------------
+| "*/"          { tokenstream lexbuf                      }
+| eof           { Parser.LEX_ERROR "COMMENT"              }
+| _             { jsonComment lexbuf                      }
+// --------------------------
