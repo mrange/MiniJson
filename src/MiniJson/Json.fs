@@ -124,11 +124,19 @@ type ParseVisitor =
     abstract Unexpected   : int*string  -> unit
   end
 
-type ParseResult =
-  | Success of Json
-  | Failure of string*int
-
 module Details =
+
+  [<Literal>]
+  let token_Null  = "null"
+
+  [<Literal>]
+  let token_True  = "true"
+
+  [<Literal>]
+  let token_False = "false"
+
+  [<Literal>]
+  let error_Prelude = "Failed to parse input as JSON"
 
   let inline neos (s : string) (pos : int) : bool = pos < s.Length
   let inline eos  (s : string) (pos : int) : bool = pos >= s.Length
@@ -190,15 +198,6 @@ module Details =
     | '8'
     | '9' -> true
     | _   -> false
-
-  [<Literal>]
-  let token_Null  = "null"
-
-  [<Literal>]
-  let token_True  = "true"
-
-  [<Literal>]
-  let token_False = "false"
 
   let inline test_Char (c : char) (s : string) (pos : int) : bool =
     neos s pos
@@ -476,6 +475,7 @@ module Details =
     | BuilderObject  of ResizeArray<string*Json>
     | BuilderArray   of ResizeArray<Json>
 
+  [<Sealed>]
   type JsonParseVisitor() =
     let context       = Stack<JsonBuilder> ()
 
@@ -502,15 +502,17 @@ module Details =
     do
       context.Push <| (BuilderRoot <| ref JsonNull)
 
+    let defaultSize = 4
+
     interface ParseVisitor with
       override x.NullValue    ()      = add <| JsonNull
       override x.BoolValue    v       = add <| JsonBoolean v
       override x.NumberValue  v       = add <| JsonNumber v
       override x.StringValue  v       = add <| JsonString v
 
-      override x.ArrayBegin   ()      = push (BuilderArray <| ResizeArray<_>())
+      override x.ArrayBegin   ()      = push (BuilderArray <| ResizeArray<_>(defaultSize))
       override x.ArrayEnd     ()      = add <| pop ()
-      override x.ObjectBegin  ()      = push (BuilderObject <| ResizeArray<_>())
+      override x.ObjectBegin  ()      = push (BuilderObject <| ResizeArray<_>(defaultSize))
       override x.ObjectEnd    ()      = add <| pop ()
       override x.MemberKey    v       = key <- v; true
 
@@ -522,6 +524,7 @@ module Details =
       Debug.Assert (context.Count = 1)
       pop ()
 
+  [<Sealed>]
   type JsonErrorParseVisitor(epos : int) =
     let expectedChars = ResizeArray<char> ()
     let expected      = ResizeArray<string> ()
@@ -549,14 +552,20 @@ module Details =
     member x.Expected       = filter expected
     member x.Unexpected     = filter unexpected
 
-let parse (s : string) : ParseResult =
+type ParseResult =
+  | Success of Json
+  | Failure of string*int
+
+let parse (fullErrorInfo : bool) (s : string) : ParseResult =
   let mutable pos = 0
   let v           = Details.JsonParseVisitor ()
 
-  match Details.tryParse (upcast v) s &pos with
-  | true  ->
+  match Details.tryParse (upcast v) s &pos, fullErrorInfo with
+  | true  , _     ->
     Success (v.Root ())
-  | false ->
+  | false , false ->
+    Failure (Details.error_Prelude, pos)
+  | false , true  ->
     let mutable epos  = 0
     let ev            = Details.JsonErrorParseVisitor (pos)
 
@@ -590,9 +599,29 @@ let parse (s : string) : ParseResult =
           else str ", "
           str v
 
-    strl "Failed to parse input as JSON"
-    strl s
-    ignore <| sb.Append ('-', pos)
+    let windowSize = 60
+    let windowBegin,windowEnd,windowPos = 
+      if s.Length < windowSize then
+        0, s.Length - 1, pos
+      else
+        let hs  = windowSize / 2
+        let b   = pos - hs
+        let e   = pos + hs
+        let ab  = max 0 b
+        let ae  = min (s.Length - 1) (e + ab - b)
+        let ap  = pos - ab
+        ab, ae, ap
+
+    strl Details.error_Prelude
+    for i = windowBegin to windowEnd do
+      let c = 
+        match s.[i] with
+        | 'n' 
+        | 'r' -> ' '
+        | c   -> c
+      ch c
+    line ()
+    ignore <| sb.Append ('-', windowPos)
     str "^ Pos: "
     ignore <| sb.Append pos
     values "Expected: " e
