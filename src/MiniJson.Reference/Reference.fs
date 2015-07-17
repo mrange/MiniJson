@@ -44,8 +44,11 @@ module Details =
     let prawint             = pipe3 getPosition puint64 getPosition (fun p ui n -> ui,(n.Index - p.Index))
 
     let pnumber =
-      let psign : Parser<float->float>=
+      let pminus : Parser<float->float>=
         charReturn '-' (fun d -> -d)
+        <|>% id
+      let psign : Parser<float->float>=
+        charReturn '+' id <|> charReturn '-' (fun d -> -d)
         <|>% id
       let pfrac =
         pipe2 (skipChar '.') prawint (fun _ (ui,i) -> (float ui) * (pown 10.0 (int -i)))
@@ -57,7 +60,7 @@ module Details =
         charReturn '0' 0.0
       let pfull =
         pipe3 puint64 pfrac pexp (fun i f e -> (float i + f)*e)
-      pipe2 psign (pzero <|> pfull) (fun s n -> JsonNumber (s n))
+      pipe2 pminus (pzero <|> pfull) (fun s n -> JsonNumber (s n))
 
     let prawstring =
       let phex =
@@ -97,13 +100,13 @@ module Details =
     let ptk ch = skipChar ch .>> spaces
 
     let parr =
-      let pvalues = sepBy pvalue (ptk ',') |>> JsonArray
+      let pvalues = sepBy pvalue (ptk ',') |>> fun vs -> JsonArray (vs |> List.toArray)
       between (ptk '[') (ptk ']') pvalues
 
     let pobj =
       let pmember =
         pipe3 (prawstring .>> spaces) (ptk ':') pvalue (fun k _ v -> k,v)
-      let pmembers = sepBy  pmember (ptk ',') |>> JsonObject
+      let pmembers = sepBy  pmember (ptk ',') |>> fun ms -> JsonObject (ms |> List.toArray)
       between (ptk '{') (ptk '}') pmembers
 
     rparray   := parr

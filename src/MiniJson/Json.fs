@@ -1,12 +1,12 @@
 ﻿// ----------------------------------------------------------------------------------------------
 // Copyright 2015 Mårten Rånge
-// 
+//
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
 // You may obtain a copy of the License at
-// 
+//
 //     http://www.apache.org/licenses/LICENSE-2.0
-// 
+//
 // Unless required by applicable law or agreed to in writing, software
 // distributed under the License is distributed on an "AS IS" BASIS,
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -26,24 +26,24 @@ type Json =
   | JsonBoolean of bool
   | JsonNumber  of float
   | JsonString  of string
-  | JsonArray   of Json list
-  | JsonObject  of (string*Json) list
+  | JsonArray   of Json []
+  | JsonObject  of (string*Json) []
 
 let toString (doIndent : bool) (json : Json) : string =
   let sb = StringBuilder ()
 
   let newline, indent, inc, dec =
     let doNothing () = ()
-    if doIndent then 
+    if doIndent then
       let current = ref 0
 
       let newline ()  = ignore <| sb.AppendLine ()
       let indent ()   = ignore <| sb.Append (' ', !current)
       let inc ()      = current := !current + 2
       let dec ()      = current := !current - 2
-          
+
       newline, indent, inc, dec
-    else 
+    else
       doNothing, doNothing, doNothing, doNothing
 
   let inline str (s : string)     = ignore <| sb.Append s
@@ -66,27 +66,23 @@ let toString (doIndent : bool) (json : Json) : string =
       | c     -> ch c
     ch '"'
 
-  let rec loop (vs : 'T list) (a : 'T -> unit) =
-    match vs with
-    | []    -> ()
-    | v::vv -> 
-      indent ()
-      a v
-      if not vv.IsEmpty then
-        ch ','
-      newline ()
-      loop vv a // TODO: Check tail recursive
-
-  let values b e (vs : 'T list) (a : 'T -> unit) = 
+  let values b e (vs : 'T array) (a : 'T -> unit) =
     ch b
     newline ()
     inc ()
-    loop vs a
+    let ee = vs.Length - 1
+    for i = 0 to ee do
+      let v = vs.[i]
+      indent ()
+      a v
+      if i < ee then
+        ch ','
+      newline ()
     dec ()
     indent ()
     ch e
 
-  let rec impl j = 
+  let rec impl j =
     match j with
     | JsonNull          -> str "null"
     | JsonBoolean true  -> str "true"
@@ -147,6 +143,8 @@ module Details =
     v.Unexpected (pos, "EOS")
     false
 
+  let inline pow n = pown 10.0 n
+
   let raiseValue (v : ParseVisitor) (pos : int) : bool =
     v.Expected      (pos, "null"  )
     v.Expected      (pos, "true"  )
@@ -157,7 +155,7 @@ module Details =
     v.ExpectedChar  (pos, '-'     )
     v.Expected      (pos, "digit" )
     false
-    
+
   let inline isWhiteSpace (c : char) : bool =
     match c with
     | '\t'
@@ -278,7 +276,7 @@ module Details =
       let spos        = pos
       let mutable ui  = 0UL
       if tryParse_UInt true v s &pos &ui then
-        r <- (float ui) * (pown 10.0 (spos - pos))
+        r <- (float ui) * (pow (spos - pos))
         true
       else
         false
@@ -306,12 +304,12 @@ module Details =
     let zero          = tryConsume_Char '0' v s &pos
     let inline sign v = if hasSign then -v else v
 
-    if zero then 
+    if zero then
       v.NumberValue (sign 0.0)
     else
-      let mutable i = 0UL 
+      let mutable i = 0UL
       let mutable f = 0.0
-      let mutable e = 1
+      let mutable e = 0
 
       let result =
         tryParse_UInt true v s &pos &i
@@ -319,18 +317,18 @@ module Details =
         && tryParse_Exponent v s &pos &e
 
       if result then
-        v.NumberValue (sign ((float i + f) * (pown 10.0 e)))
+        v.NumberValue (sign ((float i + f) * (pow e)))
       else
         false
 
   let rec tryParse_UnicodeChar (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) (n : int) (r : int) : bool =
     // TODO: Check this is tail recursive
-    if n = 0 then 
+    if n = 0 then
       ignore <| sb.Append (char r)
       true
     elif eos s pos then raiseEos v pos
     else
-      let sr  = r <<< 4  
+      let sr  = r <<< 4
       let   c = ch s pos
       if    c >= '0' && c <= '9'  then adv &pos ; tryParse_UnicodeChar sb v s &pos (n - 1) (sr + (int c - int '0'))
       elif  c >= 'A' && c <= 'F'  then adv &pos ; tryParse_UnicodeChar sb v s &pos (n - 1) (sr + (int c - int 'A' + 10))
@@ -353,9 +351,9 @@ module Details =
         if eos s pos then raiseEos v pos
         else
           let e = ch s pos
-          let result = 
+          let result =
             match e with
-            | '"' 
+            | '"'
             | '\\'
             | '/' -> app e    ; adv &pos; true
             | 'b' -> app '\b' ; adv &pos; true
@@ -363,7 +361,7 @@ module Details =
             | 'n' -> app '\n' ; adv &pos; true
             | 'r' -> app '\r' ; adv &pos; true
             | 't' -> app '\t' ; adv &pos; true
-            | 'u' -> 
+            | 'u' ->
               adv &pos
               tryParse_UnicodeChar sb v s &pos 4 0 // TODO: Check this is tail recursive
             | _ ->
@@ -411,7 +409,7 @@ module Details =
     if test_Char ']' s pos then
       true
     else
-      tryConsume_Delimiter    first v s &pos 
+      tryConsume_Delimiter    first v s &pos
       && tryParse_Value             v s &pos
       && tryParse_ArrayValues false v s &pos      // TODO: Check this is tail recursive
 
@@ -422,12 +420,12 @@ module Details =
     && tryParse_ArrayValues true  v s &pos
     && tryConsume_Char        ']' v s &pos
     && v.ArrayEnd ()
-  
+
   and tryParse_ObjectMembers first (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     if test_Char '}' s pos then
       true
     else
-      tryConsume_Delimiter      first v s &pos 
+      tryConsume_Delimiter      first v s &pos
       && tryParse_MemberKey           v s &pos
       && consume_WhiteSpace             s &pos
       && tryConsume_Char          ':' v s &pos
@@ -446,7 +444,7 @@ module Details =
   and tryParse_Value (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     else
-      let result = 
+      let result =
         match ch s pos with
         | 'n'                 -> tryParse_Null    v s &pos
         | 't'                 -> tryParse_True    v s &pos
@@ -466,7 +464,7 @@ module Details =
 
   let tryParse (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     consume_WhiteSpace s &pos
-    && (tryParse_Object v s &pos) || (tryParse_Array v s &pos) 
+    && (tryParse_Object v s &pos) || (tryParse_Array v s &pos)
     && consume_WhiteSpace s &pos
     && tryParse_Eos v s &pos
 
@@ -479,18 +477,19 @@ module Details =
   type JsonParseVisitor() =
     let context       = Stack<JsonBuilder> ()
 
+    // TODO: Fix key
     let mutable key   = ""
     let mutable root  = JsonNull
 
-    let push v        = 
+    let push v        =
       context.Push v
       true
 
-    let pop ()        = 
+    let pop ()        =
       match context.Pop () with
       | BuilderRoot vr    -> !vr
-      | BuilderArray  vs  -> JsonArray (vs |> Seq.toList)
-      | BuilderObject ms  -> JsonObject (ms |> Seq.toList)
+      | BuilderArray  vs  -> JsonArray (vs.ToArray ())
+      | BuilderObject ms  -> JsonObject (ms.ToArray ())
 
     let add v         =
       match context.Peek () with
@@ -520,7 +519,7 @@ module Details =
       override x.Expected     (p,e)   = ()
       override x.Unexpected   (p,ue)  = ()
 
-    member x.Root ()  = 
+    member x.Root ()  =
       Debug.Assert (context.Count = 1)
       pop ()
 
@@ -542,7 +541,7 @@ module Details =
       override x.ArrayEnd     ()      = true
       override x.ObjectBegin  ()      = true
       override x.ObjectEnd    ()      = true
-      override x.MemberKey    v       = true                          
+      override x.MemberKey    v       = true
 
       override x.ExpectedChar (p,e)   = if p = epos then expectedChars.Add e
       override x.Expected     (p,e)   = if p = epos then expected.Add e
@@ -577,7 +576,7 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
     let inline ch   (c : char)    = ignore <| sb.Append c
     let inline line ()            = ignore <| sb.AppendLine ()
 
-    let e = 
+    let e =
       Seq.concat
         [|
           ev.ExpectedChars  |> Seq.map (fun c -> "'" + (c.ToString ()) + "'")
@@ -600,7 +599,7 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
           str v
 
     let windowSize = 60
-    let windowBegin,windowEnd,windowPos = 
+    let windowBegin,windowEnd,windowPos =
       if s.Length < windowSize then
         0, s.Length - 1, pos
       else
@@ -614,9 +613,9 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
 
     strl Details.error_Prelude
     for i = windowBegin to windowEnd do
-      let c = 
+      let c =
         match s.[i] with
-        | 'n' 
+        | 'n'
         | 'r' -> ' '
         | c   -> c
       ch c
