@@ -5,16 +5,14 @@
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>68c7233e-b616-4233-a3b8-6881f11dfb2f</ProjectGuid>
-    <OutputType>Exe</OutputType>
-    <RootNamespace>MiniJson</RootNamespace>
-    <AssemblyName>MiniJson</AssemblyName>
+    <ProjectGuid>821c50d0-c33e-4ceb-b1c5-767ca682083a</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <RootNamespace>MiniJson.Reference</RootNamespace>
+    <AssemblyName>MiniJson.Reference</AssemblyName>
     <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
-    <Name>MiniJson</Name>
-    <NuGetPackageImportStamp>
-    </NuGetPackageImportStamp>
+    <Name>MiniJson.Reference</Name>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -25,7 +23,7 @@
     <DefineConstants>DEBUG;TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Debug\MiniJson.XML</DocumentationFile>
+    <DocumentationFile>bin\Debug\MiniJson.Reference.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
@@ -36,9 +34,36 @@
     <DefineConstants>TRACE</DefineConstants>
     <WarningLevel>3</WarningLevel>
     <PlatformTarget>AnyCPU</PlatformTarget>
-    <DocumentationFile>bin\Release\MiniJson.XML</DocumentationFile>
+    <DocumentationFile>bin\Release\MiniJson.Reference.XML</DocumentationFile>
     <Prefer32Bit>true</Prefer32Bit>
   </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="FParsec">
+      <HintPath>..\packages\FParsec.1.0.1\lib\net40-client\FParsec.dll</HintPath>
+    </Reference>
+    <Reference Include="FParsecCS">
+      <HintPath>..\packages\FParsec.1.0.1\lib\net40-client\FParsecCS.dll</HintPath>
+    </Reference>
+    <Reference Include="mscorlib" />
+    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Numerics" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="Reference.fs" />
+    <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\MiniJson\MiniJson.fsproj">
+      <Name>MiniJson</Name>
+      <Project>{68c7233e-b616-4233-a3b8-6881f11dfb2f}</Project>
+      <Private>True</Private>
+    </ProjectReference>
+  </ItemGroup>
   <PropertyGroup>
     <MinimumVisualStudioVersion Condition="'$(MinimumVisualStudioVersion)' == ''">11</MinimumVisualStudioVersion>
   </PropertyGroup>
@@ -55,49 +80,6 @@
     </Otherwise>
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
-  <ItemGroup>
-    <Compile Include="AssemblyInfo.fs" />
-    <None Include="App.config" />
-    <Content Include="packages.config" />
-    <Compile Include="Json.fs" />
-    <FsYacc Include="JsonParser.fsy">
-      <Link>Parser\JsonParser.fsy</Link>
-      <Module>MiniJson.Internal.Parser</Module>
-      <OtherFlags>
-      </OtherFlags>
-    </FsYacc>
-    <FsLex Include="JsonLexer.fsl">
-      <Link>Parser\JsonLexer.fsl</Link>
-      <OtherFlags>--unicode</OtherFlags>
-    </FsLex>
-    <Compile Include="JsonParser.fs">
-      <Link>Parser\JsonParser.fs</Link>
-    </Compile>
-    <Compile Include="JsonLexer.fs">
-      <Link>Parser\JsonLexer.fs</Link>
-    </Compile>
-    <Compile Include="Program.fs" />
-  </ItemGroup>
-  <ItemGroup>
-    <Reference Include="FsLexYacc.Runtime">
-      <HintPath>packages\FsLexYacc.Runtime.6.1.0\lib\net40\FsLexYacc.Runtime.dll</HintPath>
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="mscorlib" />
-    <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
-      <Private>True</Private>
-    </Reference>
-    <Reference Include="System" />
-    <Reference Include="System.Core" />
-    <Reference Include="System.Numerics" />
-  </ItemGroup>
-  <Import Project="packages\FsLexYacc.6.1.0\build\FsLexYacc.targets" Condition="Exists('packages\FsLexYacc.6.1.0\build\FsLexYacc.targets')" />
-  <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
-    <PropertyGroup>
-      <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>
-    </PropertyGroup>
-    <Error Condition="!Exists('packages\FsLexYacc.6.1.0\build\FsLexYacc.targets')" Text="$([System.String]::Format('$(ErrorText)', 'packages\FsLexYacc.6.1.0\build\FsLexYacc.targets'))" />
-  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">
