@@ -98,7 +98,7 @@ type JsonScalar =
         match p with
         | (QueryProperty name, _) -> ch sb '.'; str sb name
         | (QueryIndexOf i, _)     -> str sb ".["; ii sb i; ch sb ']'
-        loopParents sb ps // TODO: Check tail-recursive
+        loopParents sb ps
 
     let rec loopErrors sb = function
       | []    -> ()
@@ -108,7 +108,7 @@ type JsonScalar =
         | ErrorUnknownProperty name -> ch sb '!'; str sb name
         | ErrorNotIndexable i
         | ErrorIndexOutBounds i     -> str sb "!["; ii sb i; ch sb ']'
-        loopErrors sb es // TODO: Check tail-recursive
+        loopErrors sb es
 
     match x with
     | ScalarNull      _             -> "null"
@@ -198,7 +198,7 @@ and  JsonPath =
               find (i + 1)
           else
             PathError ([ErrorUnknownProperty name], json, parents)
-        find 0  // TODO: Check tail recursive
+        find 0
     | PathError (errors, json, parents) ->
       PathError ((ErrorNotObject name)::errors, json, parents)
 
