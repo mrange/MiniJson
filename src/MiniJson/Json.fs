@@ -14,7 +14,7 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
 
-/// MiniJson wants to be a minimal compliant JSON parser with reasonable performance 
+/// MiniJson aims to be a minimal yet compliant JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
 #if INTERNALIZE_MINIJSON

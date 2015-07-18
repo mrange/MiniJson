@@ -13,52 +13,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
 open System
+open System.Diagnostics
 open System.Globalization
 open System.IO
-open System.Reflection
 open System.Text
-
-open Microsoft.FSharp.Core.Printf
 
 open MiniJson
 open MiniJson.JsonModule
+open MiniJson.Tests.Test
+open MiniJson.Tests.TestCases
+// ----------------------------------------------------------------------------------------------
 
-let mutable errors = 0
-
-let print (cc : ConsoleColor) (prelude : string) (msg : string) : unit =
-  let p = Console.ForegroundColor
-  try
-    Console.ForegroundColor <- cc
-    Console.Write prelude
-    Console.WriteLine msg
-  finally
-    Console.ForegroundColor <- p
-
-let error     msg     =
-  errors <- errors + 1
-  print ConsoleColor.Red    "ERROR  : " msg
-
-let warning   msg     = print ConsoleColor.Yellow "WARNING: " msg
-let info      msg     = print ConsoleColor.Gray   "INFO   : " msg
-let success   msg     = print ConsoleColor.Green  "SUCCESS: " msg
-let highlight msg     = print ConsoleColor.White  "HILIGHT: " msg
-
-let errorf      f     = kprintf error     f
-let warningf    f     = kprintf warning   f
-let infof       f     = kprintf info      f
-let successf    f     = kprintf success   f
-let highlightf  f     = kprintf highlight f
-
-let test_failure msg  = errorf "TEST: %s" msg
-let test_failuref f   = kprintf test_failure f
-
-let test_eq e a tc    =
-  if e = a then true
-  else
-    errorf "TEST_EQ: %A = %A (%s)" e a tc
-    false
-
+// ----------------------------------------------------------------------------------------------
 let jsonAsString (random : Random) (json : Json) : string =
   let sb = StringBuilder ()
 
@@ -123,7 +92,9 @@ let jsonAsString (random : Random) (json : Json) : string =
   impl json
 
   sb.ToString ()
+// ----------------------------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------------------------
 let randomizeJson (n : int) (random : Random) : Json =
   let randomizeRawString  (n : int) : string =
     String (Array.init (random.Next (3, 10)) (fun _ -> char (random.Next(65,65+25))))
@@ -153,7 +124,9 @@ let randomizeJson (n : int) (random : Random) : Json =
   match random.Next(0,2) with
   | 0         -> randomizeArray n
   | _         -> randomizeObject n
+// ----------------------------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------------------------
 let compareParsers (positive : bool) (testCase : string) (action : Json -> Json -> unit) : unit =
   let expected  = ReferenceJsonModule.parse testCase
   let actual    = parse false testCase
@@ -167,72 +140,23 @@ let compareParsers (positive : bool) (testCase : string) (action : Json -> Json 
     ignore <| test_eq e     a         testCase
   | _             , _             ->
     test_failuref "Parsing mismatch '%s', expected:%A, actual: %A" testCase expected actual
+// ----------------------------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------------------------
+let random = Random 19740531
+let generatedTestCases = Array.init 1000 <| fun _ -> (randomizeJson 10 random |> fun json -> true, toString false json)
+// ----------------------------------------------------------------------------------------------
 
-let positiveTestCases =
-  [|
-    // Positive testcases
-    true,   """[0]"""
-    true,   """[-0]"""
-    true,   """[0.125]"""
-    true,   """[-0.125]"""
-    true,   """[0e2]"""
-    true,   """[-0E2]"""
-    true,   """[0.125E3]"""
-    true,   """[-0.125E2]"""
-    true,   """[123]"""
-    true,   """[-123]"""
-    true,   """[1.23]"""
-    true,   """[-12.3]"""
-    true,   """[1.23E2]"""
-    true,   """[-12.3E-2]"""
-    true,   """[-12.3e+2]"""
-    true,   """[null]"""
-    true,   """[true]"""
-    true,   """[false]"""
-    true,   """["Hello\r\nThere"]"""
-    true,   """["Hello\u004a"]"""
-    true,   """["\"\\\/\b\f\n\r\t\u2665"]"""
-    true,   """["\u0123\u4567\u89AB\uCDEF"]"""
-    true,   """["\u0123\u4567\u89ab\ucdef"]"""
-    true,   """[false,true,null]"""
-    true,   """ [ false ,true, null ] """
-    true,   """[[], null, [true]]"""
-  |]
-
-let negativeTestCases =
-  [|
-    // Negative testcases
-    false,  """null"""
-    false,  """true"""
-    false,  """false"""
-    false,  """0"""
-    false,  """-0"""
-    false,  """123"""
-    false,  """-123"""
-    false,  """ "Hello" """
-    false,  """[-01]"""
-    false,  """[0123]"""
-    false,  """[1.]"""
-    false,  """[1E]"""
-    false,  """[1E+]"""
-    false,  """[1E-]"""
-    false,  """["Hello]"""
-    false,  """["Hello\xThere"]"""
-    false,  """["Hello\u00"]"""
-  |]
-
-
-let functionalTestCases (random : Random) (dumper : string -> unit) =
-  let generatedTestCases = Array.init 1000 <| fun _ -> (randomizeJson 10 random |> fun json -> true, toString false json)
-
-  let testCases = Array.concat [|positiveTestCases; negativeTestCases; generatedTestCases|]
+// ----------------------------------------------------------------------------------------------
+let functionalTestCases (dumper : string -> unit) =
+  let testCases = Array.concat [|positiveTestCases; negativeTestCases; explicitTestCases; generatedTestCases|]
 
   let noAction _ _ = ()
 
   for positive, testCase in testCases do
-    dumper "---==> TEST <==---"
-    dumper <| sprintf "%A - %s" positive testCase
+    dumper "---==> FUNCTIONAL TEST <==---"
+    dumper (if positive then "positive" else "negative")
+    dumper testCase
 
     compareParsers positive testCase <| fun e a ->
       let unindented  = toString false e
@@ -246,28 +170,72 @@ let functionalTestCases (random : Random) (dumper : string -> unit) =
       compareParsers positive unindented noAction
       compareParsers positive indented   noAction
       compareParsers positive dumped     noAction
+// ----------------------------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------------------------
+let performanceTestCases (dumper : string -> unit) =
+  let testCases = explicitTestCases |> Array.filter (fun (_, tc) -> tc.Length > 1000)
+
+  let sw = Stopwatch ()
+
+  let timeIt n (a : unit -> 'T) : int64*'T =
+    sw.Reset ()
+
+    let result = a ()
+
+    sw.Start ()
+
+    for i = 1 to n do
+      ignore <| a ()
+
+    sw.Stop ()
+
+    sw.ElapsedMilliseconds, result
+
+  for positive, testCase in testCases do
+    dumper "---==> PERFORMANCE TEST <==---"
+    dumper (if positive then "positive" else "negative")
+    dumper testCase
+
+    let iterations = 100
+
+    let expected, _ = timeIt iterations (fun _ -> ReferenceJsonModule.parse testCase)    
+    let actual  , _ = timeIt iterations (fun _ -> parse false testCase)    
+
+    ignore <| test_eq true (expected > actual) testCase
+
+    dumper <| sprintf "Iterations: %d, expected: %d ms, actual: %d ms" iterations expected actual
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
 [<EntryPoint>]
 let main argv =
-  highlight "Starting JSON testcases..."
+  try
+    highlight "Starting JSON testcases..."
 
-  Environment.CurrentDirectory <- AppDomain.CurrentDomain.BaseDirectory
+    Environment.CurrentDirectory <- AppDomain.CurrentDomain.BaseDirectory
 
-  let random = Random 19740531
-
-#if !DUMP_JSON
-  let dumper _            = ()
+#if DUMP_JSON
+    let dumper _            = ()
 #else
-  use dump = File.CreateText "dump.txt"
-  let dumper (s : string) = dump.WriteLine s
+    use dump = File.CreateText "dump.txt"
+    let dumper (s : string) = dump.WriteLine s
 #endif
 
-  functionalTestCases random dumper
+    info "Running functional testcases..."
+    functionalTestCases dumper
+#if !DEBUG
+    info "Running performance testcases..."
+    performanceTestCases dumper
+#endif
+
+  with
+  | ex -> errorf "EXCEPTION: %s" ex.Message
 
   if errors = 0 then
     success "No errors detected"
+    0
   else
     errorf "Detected %d error(s)" errors
-
-
-  0
+    9999
+// ----------------------------------------------------------------------------------------------
