@@ -9,6 +9,8 @@ Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MiniJson.Reference", "MiniJ
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MiniJson.Tests", "MiniJson.Tests\MiniJson.Tests.fsproj", "{387B94CC-4E4D-4F3C-BF80-5916C895E404}"
 EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MiniJson.Paket", "MiniJson.Paket\MiniJson.Paket.fsproj", "{C3711D8D-21A1-4E9A-B130-F4B4193C24E6}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{387B94CC-4E4D-4F3C-BF80-5916C895E404}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{387B94CC-4E4D-4F3C-BF80-5916C895E404}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{387B94CC-4E4D-4F3C-BF80-5916C895E404}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C3711D8D-21A1-4E9A-B130-F4B4193C24E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C3711D8D-21A1-4E9A-B130-F4B4193C24E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C3711D8D-21A1-4E9A-B130-F4B4193C24E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C3711D8D-21A1-4E9A-B130-F4B4193C24E6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

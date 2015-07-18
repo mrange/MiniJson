@@ -1,0 +1,5 @@
+
+HTTP
+  remote: https://raw.githubusercontent.com
+  specs:
+    MiniJson.fs (/mrange/MiniJson/master/src/MiniJson/MiniJson.fs)
