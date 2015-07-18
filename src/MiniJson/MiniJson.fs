@@ -20,7 +20,7 @@
 #if PUBLIC_MINIJSON
 module MiniJson.JsonModule
 #else
-module internal MiniJson.JsonModule
+module internal Internal.MiniJson.JsonModule
 #endif
 open System
 open System.Collections.Generic
@@ -156,7 +156,7 @@ module Details =
     v.Expected      (pos, "null"  )
     v.Expected      (pos, "true"  )
     v.Expected      (pos, "false" )
-    v.Expected      (pos, "STRING")
+    v.ExpectedChar  (pos, '"'     )
     v.ExpectedChar  (pos, '{'     )
     v.ExpectedChar  (pos, '['     )
     v.ExpectedChar  (pos, '-'     )

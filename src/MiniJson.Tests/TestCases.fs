@@ -68,7 +68,7 @@ let negativeTestCases =
     """-0"""
     """125"""
     """-125"""
-    """ "Hello" """
+    "\"Hello\""
     """[01]"""
     """[-01]"""
     """[0125]"""
@@ -130,8 +130,8 @@ Expected: '[' or '{'"""
 Expected: '[' or '{'"""
 
     """Failed to parse input as JSON
- "Hello"
--^ Pos: 1
+"Hello"
+^ Pos: 0
 Expected: '[' or '{'"""
 
     """Failed to parse input as JSON
@@ -152,12 +152,12 @@ Expected: ',', '.', 'E' or 'e'"""
     """Failed to parse input as JSON
 [+0]
 -^ Pos: 1
-Expected: '-', '[', '{', STRING, digit, false, null or true"""
+Expected: '"', '-', '[', '{', digit, false, null or true"""
 
     """Failed to parse input as JSON
 [+125]
 -^ Pos: 1
-Expected: '-', '[', '{', STRING, digit, false, null or true"""
+Expected: '"', '-', '[', '{', digit, false, null or true"""
 
     """Failed to parse input as JSON
 [1.]
@@ -217,7 +217,7 @@ Unexpected: EOS"""
     """Failed to parse input as JSON
 {"abc":}
 -------^ Pos: 7
-Expected: '-', '[', '{', STRING, digit, false, null or true"""
+Expected: '"', '-', '[', '{', digit, false, null or true"""
 
     """Failed to parse input as JSON
 rnous string, to demonstrate \ERROR window"]
