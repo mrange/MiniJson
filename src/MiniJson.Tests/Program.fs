@@ -366,20 +366,20 @@ let pathTestCases (dumper : string -> unit) =
 
   let path = rootObject.Path
 
-  check_scalar (defaultNull           ) (path?Object?Null      .Value)
-  check_scalar (defaultBoolean false  ) (path?Object?Boolean   .Value)
-  check_scalar (defaultNumber  123.   ) (path?Object?Number    .Value)
-  check_scalar (defaultString  "There") (path?Object?String    .Value)
+  check_scalar (defaultNull           ) (path?Object?Null     .Value        )
+  check_scalar (defaultBoolean false  ) (path?Object?Boolean  .Value        )
+  check_scalar (defaultNumber  123.   ) (path?Object?Number   .Value        )
+  check_scalar (defaultString  "There") (path?Object?String   .Value        )
 
-  check_scalar (defaultNull           ) (path?Object?Array.[0] .Value)
-  check_scalar (defaultBoolean true   ) (path?Object?Array.[1] .Value)
-  check_scalar (defaultNumber  0.     ) (path?Object?Array.[2] .Value)
-  check_scalar (defaultString  "Hello") (path?Object?Array.[3] .Value)
+  check_scalar (defaultNull           ) (path?Object?Array    .[0]    .Value)
+  check_scalar (defaultBoolean true   ) (path?Object?Array    .[1]    .Value)
+  check_scalar (defaultNumber  0.     ) (path?Object?Array    .[2]    .Value)
+  check_scalar (defaultString  "Hello") (path?Object?Array    .[3]    .Value)
 
-  check_scalar (defaultNull           ) (path?Array.[0] .Value)
-  check_scalar (defaultBoolean true   ) (path?Array.[1] .Value)
-  check_scalar (defaultNumber  0.     ) (path?Array.[2] .Value)
-  check_scalar (defaultString  "Hello") (path?Array.[3] .Value)
+  check_scalar (defaultNull           ) (path?Array .[0]      .Value        )
+  check_scalar (defaultBoolean true   ) (path?Array .[1]      .Value        )
+  check_scalar (defaultNumber  0.     ) (path?Array .[2]      .Value        )
+  check_scalar (defaultString  "Hello") (path?Array .[3]      .Value        )
 
 
 // ----------------------------------------------------------------------------------------------
