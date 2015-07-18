@@ -100,7 +100,7 @@ let parse (input : string) : ParseResult =
           | JsonToken.String            -> add    <| (JsonString <| str ())
           | JsonToken.Undefined
           | _ -> false
-        result && loop () // TODO: Check is tail-recursive
+        result && loop ()
       else
         true
 

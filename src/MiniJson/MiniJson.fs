@@ -338,7 +338,6 @@ module Details =
       false
 
   let rec tryParse_UnicodeChar (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) (n : int) (r : int) : bool =
-    // TODO: Check this is tail recursive
     if n = 0 then
       ignore <| sb.Append (char r)
       true
@@ -379,7 +378,7 @@ module Details =
             | 't' -> app '\t' ; adv &pos; true
             | 'u' ->
               adv &pos
-              tryParse_UnicodeChar sb v s &pos 4 0 // TODO: Check this is tail recursive
+              tryParse_UnicodeChar sb v s &pos 4 0
             | _ ->
               v.ExpectedChar (pos, '"' )
               v.ExpectedChar (pos, '\\')
@@ -391,11 +390,11 @@ module Details =
               v.ExpectedChar (pos, 't' )
               v.ExpectedChar (pos, 'u' )
               false
-          result && tryParse_Chars sb v s &pos // TODO: Check this is tail recursive
+          result && tryParse_Chars sb v s &pos
       | _           ->
         adv &pos
         app c
-        tryParse_Chars sb v s &pos // TODO: Check this is tail recursive
+        tryParse_Chars sb v s &pos
 
   let tryParse_ToStringBuilder (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     ignore <| sb.Clear ()
@@ -427,7 +426,7 @@ module Details =
     else
       tryConsume_Delimiter    first v s &pos
       && tryParse_Value             v s &pos
-      && tryParse_ArrayValues false v s &pos      // TODO: Check this is tail recursive
+      && tryParse_ArrayValues false v s &pos
 
   and tryParse_Array (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryConsume_Char           '[' v s &pos
@@ -447,7 +446,7 @@ module Details =
       && tryConsume_Char          ':' v s &pos
       && consume_WhiteSpace             s &pos
       && tryParse_Value               v s &pos
-      && tryParse_ObjectMembers false v s &pos      // TODO: Check this is tail recursive
+      && tryParse_ObjectMembers false v s &pos
 
   and tryParse_Object (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryConsume_Char               '{' v s &pos
