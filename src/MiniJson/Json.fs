@@ -266,24 +266,25 @@ module Details =
     else
       raiseValue v pos
 
-  let rec tryParse_UInt (first : bool) (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<uint64>) : bool =
+  let rec tryParse_UInt (first : bool) (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+    let z = float '0'
     if eos s pos then ignore <| raiseEos v pos; not first
     else
       let c = ch s pos
       if c >= '0' && c <= '9' then
         adv &pos
-        r <- 10UL*r + (uint64 c - uint64 '0')
+        r <- 10.0*r + (float c - z)
         tryParse_UInt false v s &pos &r
       else
         v.Expected (pos, "digit")
         not first
 
-  let tryParse_UInt0 (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<uint64>) : bool =
+  let tryParse_UInt0 (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     // tryParse_UInt0 only consumes 0 if input is 0123, this in order to be conformant with spec
     let zero          = tryConsume_Char '0' v s &pos
 
     if zero then
-      r <- 0UL
+      r <- 0.0
       true
     else
       tryParse_UInt true v s &pos &r
@@ -291,9 +292,9 @@ module Details =
   let tryParse_Fraction (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     if tryConsume_Char '.' v s &pos then
       let spos        = pos
-      let mutable ui  = 0UL
-      if tryParse_UInt true v s &pos &ui then
-        r <- (float ui) * (pow (spos - pos))
+      let mutable uf  = 0.
+      if tryParse_UInt true v s &pos &uf then
+        r <- (float uf) * (pow (spos - pos))
         true
       else
         false
@@ -306,10 +307,12 @@ module Details =
       let mutable sign = '+'
       // Ignore as sign is optional
       ignore <| tryParse_AnyOf [|'+';'-'|] v s &pos &sign
-      let mutable i = 0UL
-      if tryParse_UInt true v s &pos &i then
+      // TODO: Parsing exponent as float seems unnecessary
+      // TODO: Check out of range for exponent
+      let mutable uf = 0.0
+      if tryParse_UInt true v s &pos &uf then
         let inline sign v = if sign = '-' then -v else v
-        r <- sign (int i)
+        r <- sign (int uf)
         true
       else
         false
@@ -320,7 +323,7 @@ module Details =
     let hasSign       = tryConsume_Char '-' v s &pos
     let inline sign v = if hasSign then -v else v
 
-    let mutable i = 0UL
+    let mutable i = 0.0
     let mutable f = 0.0
     let mutable e = 0
 
@@ -330,7 +333,7 @@ module Details =
       && tryParse_Exponent v s &pos &e
 
     if result then
-      v.NumberValue (sign ((float i + f) * (pow e)))
+      v.NumberValue (sign ((i + f) * (pow e)))
     else
       false
 

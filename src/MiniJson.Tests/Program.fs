@@ -28,6 +28,8 @@ open MiniJson.Tests.TestCases
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
+let referenceParse s = ReferenceJsonModule.parse s
+
 let jsonAsString (random : Random) (json : Json) : string =
   let sb = StringBuilder ()
 
@@ -199,12 +201,12 @@ let performanceTestCases (dumper : string -> unit) =
 
     let iterations = 100
 
-    let expected, _ = timeIt iterations (fun _ -> ReferenceJsonModule.parse testCase)
-    let actual  , _ = timeIt iterations (fun _ -> parse false testCase)
+    let reference , _ = timeIt iterations (fun _ -> referenceParse testCase)
+    let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
 
-    ignore <| test_eq true (expected > actual) testCase
+    ignore <| test_eq true (reference > actual) testCase
 
-    dumper <| sprintf "Iterations: %d, expected: %d ms, actual: %d ms" iterations expected actual
+    dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
