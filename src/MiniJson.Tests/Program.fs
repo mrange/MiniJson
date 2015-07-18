@@ -23,6 +23,7 @@ open System.Text
 
 open MiniJson
 open MiniJson.JsonModule
+open MiniJson.JsonPathModule
 open MiniJson.Tests.Test
 open MiniJson.Tests.TestCases
 // ----------------------------------------------------------------------------------------------
@@ -138,11 +139,11 @@ let compareParsers
 
   match expected, actual with
   | Success e     , Success a     ->
-    ignore <| test_eq true  positive  name
+    check_eq true  positive  name
     if test_eq e a testCase then postProcess e a
   | Failure (_,e) , Failure (_,a) ->
-    ignore <| test_eq false positive  name
-    ignore <| test_eq e     a         name
+    check_eq false positive  name
+    check_eq e     a         name
   | _             , _             ->
     test_failuref "Parsing mismatch '%s', expected:%A, actual: %A" name expected actual
 // ----------------------------------------------------------------------------------------------
@@ -259,7 +260,7 @@ let runPerformanceTestCases
     let reference , _ = timeIt iterations (fun _ -> referenceParser testCase)
     let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
 
-    ignore <| test_eq true (reference > actual) name
+    check_eq true (reference > actual) name
 
     dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
 // ----------------------------------------------------------------------------------------------
@@ -309,7 +310,80 @@ let errorReportingTestCases (dumper : string -> unit) =
     match parse true testCase with
     | Success v           -> test_failuref "Parsing expected to fail for '%s' : %A" name v
     | Failure (actual, _)  ->
-      ignore <| test_eq expected actual name
+      check_eq expected actual name
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let pathTestCases (dumper : string -> unit) =
+  infof "Running json path testcases..."
+
+  let test_scalar e a =
+    match e,a with
+    | ScalarNull        _     , ScalarNull        _                 -> true
+    | ScalarBoolean     (_,a) , ScalarBoolean     (_,b) when a = b  -> true
+    | ScalarNumber      (_,a) , ScalarNumber      (_,b) when a = b  -> true
+    | ScalarString      (_,a) , ScalarString      (_,b) when a = b  -> true
+    | ScalarNotScalar   _     , ScalarNotScalar   _                 -> true
+    | ScalarInvalidPath _     , ScalarInvalidPath _                 -> true
+    | _                       , _                                   ->
+      errorf "TEST_SCALAR: %A equiv %A" e a
+      false
+
+  let check_scalar e a = ignore <| test_scalar e a
+
+  let jsonArray =
+    JsonArray
+      [|
+        JsonNull
+        JsonBoolean true
+        JsonNumber  0.
+        JsonString  "Hello"
+      |]
+
+  let jsonObject =
+    JsonObject
+      [|
+        "Null"    , JsonNull
+        "Boolean" , JsonBoolean false
+        "Number"  , JsonNumber  123.
+        "String"  , JsonString  "There"
+        "Array"   , jsonArray
+      |]
+
+  let rootObject =
+    JsonObject
+      [|
+        "Object"    , jsonObject
+        "Array"     , jsonArray
+      |]
+
+
+  let defaultPath       = JsonNull, []
+  let defaultNull       = ScalarNull defaultPath
+  let defaultBoolean  v = ScalarBoolean (defaultPath, v)
+  let defaultNumber   v = ScalarNumber  (defaultPath, v)
+  let defaultString   v = ScalarString  (defaultPath, v)
+
+  let path = rootObject.Path
+
+  check_scalar (defaultNull           ) (path?Object?Null      .Value)
+  check_scalar (defaultBoolean false  ) (path?Object?Boolean   .Value)
+  check_scalar (defaultNumber  123.   ) (path?Object?Number    .Value)
+  check_scalar (defaultString  "There") (path?Object?String    .Value)
+
+  check_scalar (defaultNull           ) (path?Object?Array.[0] .Value)
+  check_scalar (defaultBoolean true   ) (path?Object?Array.[1] .Value)
+  check_scalar (defaultNumber  0.     ) (path?Object?Array.[2] .Value)
+  check_scalar (defaultString  "Hello") (path?Object?Array.[3] .Value)
+
+  check_scalar (defaultNull           ) (path?Array.[0] .Value)
+  check_scalar (defaultBoolean true   ) (path?Array.[1] .Value)
+  check_scalar (defaultNumber  0.     ) (path?Array.[2] .Value)
+  check_scalar (defaultString  "Hello") (path?Array.[3] .Value)
+
+
+// ----------------------------------------------------------------------------------------------
+
 // ----------------------------------------------------------------------------------------------
 [<EntryPoint>]
 let main argv =
@@ -324,6 +398,8 @@ let main argv =
     use dump = File.CreateText "dump.txt"
     let dumper (s : string) = dump.WriteLine s
 #endif
+
+    pathTestCases               dumper
 
     functionalTestCases         dumper
     functionalJsonNetTestCases  dumper

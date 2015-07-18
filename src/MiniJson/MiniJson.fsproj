@@ -60,6 +60,7 @@
     <None Include="App.config" />
     <Content Include="packages.config" />
     <Compile Include="MiniJson.fs" />
+    <Compile Include="MiniJson.Dynamic.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
