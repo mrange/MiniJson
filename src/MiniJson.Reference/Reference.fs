@@ -41,9 +41,10 @@ module Details =
 
     let pboolean            = stringReturn "true" (JsonBoolean true) <|> stringReturn "false" (JsonBoolean false)
 
-    let prawint             = pipe3 getPosition puint64 getPosition (fun p ui n -> ui,(n.Index - p.Index))
+    let prawuint            = pipe3 getPosition puint64 getPosition (fun p ui n -> ui,(n.Index - p.Index))
 
     let pnumber =
+      let inline pow i = pown 10.0 i
       let pminus : Parser<float->float>=
         charReturn '-' (fun d -> -d)
         <|>% id
@@ -51,10 +52,10 @@ module Details =
         charReturn '+' id <|> charReturn '-' (fun d -> -d)
         <|>% id
       let pfrac =
-        pipe2 (skipChar '.') prawint (fun _ (ui,i) -> (float ui) * (pown 10.0 (int -i)))
+        pipe2 (skipChar '.') prawuint (fun _ (ui,i) -> (float ui) * (pow (int -i)))
         <|>% 0.0
       let pexp =
-        pipe3 (anyOf "eE") psign puint64 (fun _ sign ui -> pown 10.0 (int (sign (double ui))))
+        pipe3 (anyOf "eE") psign puint64 (fun _ sign ui -> pow (int (sign (double ui))))
         <|>% 1.0
       let pzero =
         charReturn '0' 0UL
