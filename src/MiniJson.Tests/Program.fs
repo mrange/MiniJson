@@ -297,19 +297,19 @@ let performanceJsonNetTestCases (dumper : string -> unit) =
 
 // ----------------------------------------------------------------------------------------------
 let errorReportingTestCases (dumper : string -> unit) =
-  let testCases = Array.concat [|negativeTestCases|]
+  let testCases = Array.zip negativeTestCases errorReportingOracles
 
   infof "Running %d error reporting testcases..." testCases.Length
 
-  for positive, name, testCase in testCases do
+  for (positive, name, testCase), expected in testCases do
     dumper "---==> ERROR REPORTING <==---"
     dumper name
     dumper (if positive then "positive" else "negative")
     dumper testCase
     match parse true testCase with
     | Success v           -> test_failuref "Parsing expected to fail for '%s' : %A" name v
-    | Failure (msg, pos)  ->
-      printfn "Pos: %d\n%s" pos msg
+    | Failure (actual, _)  ->
+      ignore <| test_eq expected actual name
 // ----------------------------------------------------------------------------------------------
 [<EntryPoint>]
 let main argv =
@@ -318,7 +318,7 @@ let main argv =
 
     Environment.CurrentDirectory <- AppDomain.CurrentDomain.BaseDirectory
 
-#if !DUMP_JSON
+#if DUMP_JSON
     let dumper _            = ()
 #else
     use dump = File.CreateText "dump.txt"
@@ -328,7 +328,7 @@ let main argv =
     functionalTestCases         dumper
     functionalJsonNetTestCases  dumper
 //  TODO: Figure out a good way to test error strings
-//    errorReportingTestCases     dumper
+    errorReportingTestCases     dumper
 #if !DEBUG
     performanceTestCases        dumper
 //  TODO: Improve performance

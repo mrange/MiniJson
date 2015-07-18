@@ -92,6 +92,155 @@ let negativeTestCases =
     """["Early \ERROR, hello this is a wide errornous string, to demonstrate error window capabilities. The window is around 60 chars"]"""
   |] |> Array.map (fun v -> false, sprintf "Negative: %s" v, v)
 
+let errorReportingOracles =
+  [|
+    """Failed to parse input as JSON
+null
+^ Pos: 0
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+true
+^ Pos: 0
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+false
+^ Pos: 0
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+0
+^ Pos: 0
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+-0
+^ Pos: 0
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+125
+^ Pos: 0
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+-125
+^ Pos: 0
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+ "Hello"
+-^ Pos: 1
+Expected: '[' or '{'"""
+
+    """Failed to parse input as JSON
+[01]
+--^ Pos: 2
+Expected: ',', '.', 'E' or 'e'"""
+
+    """Failed to parse input as JSON
+[-01]
+---^ Pos: 3
+Expected: ',', '.', 'E' or 'e'"""
+
+    """Failed to parse input as JSON
+[0125]
+--^ Pos: 2
+Expected: ',', '.', 'E' or 'e'"""
+
+    """Failed to parse input as JSON
+[+0]
+-^ Pos: 1
+Expected: '-', '[', '{', STRING, digit, false, null or true"""
+
+    """Failed to parse input as JSON
+[+125]
+-^ Pos: 1
+Expected: '-', '[', '{', STRING, digit, false, null or true"""
+
+    """Failed to parse input as JSON
+[1.]
+---^ Pos: 3
+Expected: digit"""
+
+    """Failed to parse input as JSON
+[1E]
+---^ Pos: 3
+Expected: '+', '-' or digit"""
+
+    """Failed to parse input as JSON
+[1E+]
+----^ Pos: 4
+Expected: digit"""
+
+    """Failed to parse input as JSON
+[1E-]
+----^ Pos: 4
+Expected: digit"""
+
+    """Failed to parse input as JSON
+["Hello]
+--------^ Pos: 8
+Unexpected: EOS"""
+
+    """Failed to parse input as JSON
+["Hello\xThere"]
+--------^ Pos: 8
+Expected: '"', '/', '\', 'b', 'f', 'n', 'r', 't' or 'u'"""
+
+    """Failed to parse input as JSON
+["Hello\u"]
+---------^ Pos: 9
+Expected: hexdigit"""
+
+    """Failed to parse input as JSON
+["Hello\u00"]
+-----------^ Pos: 11
+Expected: hexdigit"""
+
+    """Failed to parse input as JSON
+["Hello\uPQ"]
+---------^ Pos: 9
+Expected: hexdigit"""
+
+    """Failed to parse input as JSON
+{abc:3}
+-^ Pos: 1
+Expected: '"'"""
+
+    """Failed to parse input as JSON
+{"abc:3}
+--------^ Pos: 8
+Unexpected: EOS"""
+
+    """Failed to parse input as JSON
+{"abc":}
+-------^ Pos: 7
+Expected: '-', '[', '{', STRING, digit, false, null or true"""
+
+    """Failed to parse input as JSON
+rnous string, to demonstrate \ERROR window"]
+------------------------------^ Pos: 66
+Expected: '"', '/', '\', 'b', 'f', 'n', 'r', 't' or 'u'"""
+
+    """Failed to parse input as JSON
+chars so now is the time for \ERROR"]
+------------------------------^ Pos: 139
+Expected: '"', '/', '\', 'b', 'f', 'n', 'r', 't' or 'u'"""
+
+    """Failed to parse input as JSON
+ow capabilities, here is the \ERROR... The window is around 6
+------------------------------^ Pos: 96
+Expected: '"', '/', '\', 'b', 'f', 'n', 'r', 't' or 'u'"""
+
+    """Failed to parse input as JSON
+["Early \ERROR, hello this is a wide errornous string, to dem
+---------^ Pos: 9
+Expected: '"', '/', '\', 'b', 'f', 'n', 'r', 't' or 'u'"""
+  |]
+
+
 let sampleTestCases =
   try
     let path  = Path.Combine (AppDomain.CurrentDomain.BaseDirectory, "TestCases")

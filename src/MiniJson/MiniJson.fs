@@ -163,6 +163,11 @@ module Details =
     v.Expected      (pos, "digit" )
     false
 
+  let raiseRoot (v : ParseVisitor) (pos : int) : bool =
+    v.ExpectedChar  (pos, '{'     )
+    v.ExpectedChar  (pos, '['     )
+    false
+
   let inline isWhiteSpace (c : char) : bool =
     match c with
     | '\t'
@@ -471,6 +476,15 @@ module Details =
         | c when isDigit c    -> tryParse_Number  v s &pos
         | _                   -> raiseValue v pos
       result && consume_WhiteSpace s &pos
+  let tryParse_RootValue (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+    if eos s pos then raiseEos v pos
+    else
+      let result =
+        match ch s pos with
+        | '['                 -> tryParse_Array   v s &pos
+        | '{'                 -> tryParse_Object  v s &pos
+        | _                   -> raiseRoot v pos
+      result && consume_WhiteSpace s &pos
 
   let tryParse_Eos (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     if neos s pos then v.Expected (pos, "EOS"); false
@@ -479,8 +493,7 @@ module Details =
 
   let tryParse (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     consume_WhiteSpace s &pos
-    && (tryParse_Object v s &pos) || (tryParse_Array v s &pos)
-    && consume_WhiteSpace s &pos
+    && tryParse_RootValue v s &pos
     && tryParse_Eos v s &pos
 
   [<NoEquality>]
