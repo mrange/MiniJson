@@ -26,69 +26,67 @@ open MiniJson.Tests.Test
 // ----------------------------------------------------------------------------------------------
 let positiveTestCases =
   [|
-    // Positive testcases
-    true,   """[0]"""
-    true,   """[-0]"""
-    true,   """[0.125]"""
-    true,   """[-0.125]"""
-    true,   """[0e2]"""
-    true,   """[-0E2]"""
-    true,   """[0.125E3]"""
-    true,   """[-0.125E2]"""
-    true,   """[125]"""
-    true,   """[-125]"""
-    true,   """[1.25]"""
-    true,   """[-12.5]"""
-    true,   """[1.25E2]"""
-    true,   """[-12.5E-2]"""
-    true,   """[-12.5e+2]"""
-    true,   """[null]"""
-    true,   """[true]"""
-    true,   """[false]"""
-    true,   """["Hello\r\nThere"]"""
-    true,   """["Hello\u004a"]"""
-    true,   """["\"\\\/\b\f\n\r\t\u2665"]"""
-    true,   """["\u0123\u4567\u89AB\uCDEF"]"""
-    true,   """["\u0123\u4567\u89ab\ucdef"]"""
-    true,   """[false,true,null]"""
-    true,   """ [ false ,true, null ] """
-    true,   """[[], null, [true]]"""
-  |]
+    """[0]"""
+    """[-0]"""
+    """[0.125]"""
+    """[-0.125]"""
+    """[0e2]"""
+    """[-0E2]"""
+    """[0.125E3]"""
+    """[-0.125E2]"""
+    """[125]"""
+    """[-125]"""
+    """[1.25]"""
+    """[-12.5]"""
+    """[1.25E2]"""
+    """[-12.5E-2]"""
+    """[-12.5e+2]"""
+    """[null]"""
+    """[true]"""
+    """[false]"""
+    """["Hello\r\nThere"]"""
+    """["Hello\u004a"]"""
+    """["\"\\\/\b\f\n\r\t\u2665"]"""
+    """["\u0123\u4567\u89AB\uCDEF"]"""
+    """["\u0123\u4567\u89ab\ucdef"]"""
+    """[false,true,null]"""
+    """ [ false ,true, null ] """
+    """[[], null, [true]]"""
+  |] |> Array.map (fun v -> true, sprintf "Positive: %s" v, v)
 
 let negativeTestCases =
   [|
-    // Negative testcases
-    false,  """null"""
-    false,  """true"""
-    false,  """false"""
-    false,  """0"""
-    false,  """-0"""
-    false,  """125"""
-    false,  """-125"""
-    false,  """ "Hello" """
-    false,  """[01]"""
-    false,  """[-01]"""
-    false,  """[0125]"""
-    false,  """[+0]"""
-    false,  """[+125]"""
-    false,  """[1.]"""
-    false,  """[1E]"""
-    false,  """[1E+]"""
-    false,  """[1E-]"""
-    false,  """["Hello]"""
-    false,  """["Hello\xThere"]"""
-    false,  """["Hello\u"]"""
-    false,  """["Hello\u00"]"""
-    false,  """["Hello\uPQ"]"""
-  |]
+    """null"""
+    """true"""
+    """false"""
+    """0"""
+    """-0"""
+    """125"""
+    """-125"""
+    """ "Hello" """
+    """[01]"""
+    """[-01]"""
+    """[0125]"""
+    """[+0]"""
+    """[+125]"""
+    """[1.]"""
+    """[1E]"""
+    """[1E+]"""
+    """[1E-]"""
+    """["Hello]"""
+    """["Hello\xThere"]"""
+    """["Hello\u"]"""
+    """["Hello\u00"]"""
+    """["Hello\uPQ"]"""
+  |] |> Array.map (fun v -> false, sprintf "Negative: %s" v, v)
 
-let explicitTestCases =
+let sampleTestCases =
   try
     let path  = Path.Combine (AppDomain.CurrentDomain.BaseDirectory, "TestCases")
     let jsons = Directory.GetFiles (path, "*.json")
 
     jsons
-    |> Array.map (fun p -> true, File.ReadAllText p)
+    |> Array.map (fun json -> true, sprintf "Sample: %s" <| Path.GetFileName json, File.ReadAllText json)
   with
   | ex -> errorf "EXCEPTION: %s" ex.Message; [||]
 

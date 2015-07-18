@@ -484,12 +484,16 @@ module Details =
     && consume_WhiteSpace s &pos
     && tryParse_Eos v s &pos
 
+  [<NoEquality>]
+  [<NoComparison>]
   type JsonBuilder =
     | BuilderRoot    of Json ref
     | BuilderObject  of string ref*ResizeArray<string*Json>
     | BuilderArray   of ResizeArray<Json>
 
   [<Sealed>]
+  [<NoEquality>]
+  [<NoComparison>]
   type JsonParseVisitor() =
     let context       = Stack<JsonBuilder> ()
 
@@ -543,6 +547,8 @@ module Details =
       pop ()
 
   [<Sealed>]
+  [<NoEquality>]
+  [<NoComparison>]
   type JsonErrorParseVisitor(epos : int) =
     let expectedChars = ResizeArray<char> ()
     let expected      = ResizeArray<string> ()

@@ -114,6 +114,7 @@
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="Test.fs" />
     <Compile Include="TestCases.fs" />
+    <Compile Include="JsonNet.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />

@@ -28,8 +28,6 @@ open MiniJson.Tests.TestCases
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let referenceParse s = ReferenceJsonModule.parse s
-
 let jsonAsString (random : Random) (json : Json) : string =
   let sb = StringBuilder ()
 
@@ -129,38 +127,47 @@ let randomizeJson (n : int) (random : Random) : Json =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let compareParsers (positive : bool) (testCase : string) (action : Json -> Json -> unit) : unit =
-  let expected  = ReferenceJsonModule.parse testCase
+let compareParsers
+  (referenceParser  : string -> ParseResult   )
+  (positive         : bool                    )
+  (name             : string                  )
+  (testCase         : string                  )
+  (postProcess      : Json -> Json -> unit    ) : unit =
+  let expected  = referenceParser testCase
   let actual    = parse false testCase
 
   match expected, actual with
   | Success e     , Success a     ->
-    ignore <| test_eq true  positive  testCase
-    if test_eq e a testCase then action e a
+    ignore <| test_eq true  positive  name
+    if test_eq e a testCase then postProcess e a
   | Failure (_,e) , Failure (_,a) ->
-    ignore <| test_eq false positive  testCase
-    ignore <| test_eq e     a         testCase
+    ignore <| test_eq false positive  name
+    ignore <| test_eq e     a         name
   | _             , _             ->
-    test_failuref "Parsing mismatch '%s', expected:%A, actual: %A" testCase expected actual
+    test_failuref "Parsing mismatch '%s', expected:%A, actual: %A" name expected actual
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
 let random = Random 19740531
-let generatedTestCases = Array.init 1000 <| fun _ -> (randomizeJson 10 random |> fun json -> true, toString false json)
+let generatedTestCases = Array.init 1000 <| fun i ->
+  randomizeJson 10 random |> fun json -> true, sprintf "Generated: %d" i,toString false json
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let functionalTestCases (dumper : string -> unit) =
-  let testCases = Array.concat [|positiveTestCases; negativeTestCases; explicitTestCases; generatedTestCases|]
-
+let runFunctionalTestCases
+  (category       : string                                                      )
+  (parserComparer : bool -> string -> string -> (Json -> Json ->  unit) -> unit )
+  (testCases      : (bool*string*string) []                                     )
+  (dumper         : string -> unit                                              ) : unit =
   let noAction _ _ = ()
 
-  for positive, testCase in testCases do
-    dumper "---==> FUNCTIONAL TEST <==---"
+  for positive, name, testCase in testCases do
+    dumper <| sprintf "---==> %s <==---" category
+    dumper name
     dumper (if positive then "positive" else "negative")
     dumper testCase
 
-    compareParsers positive testCase <| fun e a ->
+    parserComparer positive name testCase <| fun e a ->
       let unindented  = toString false e
       let indented    = toString true e
       let dumped      = jsonAsString random e
@@ -169,14 +176,63 @@ let functionalTestCases (dumper : string -> unit) =
       dumper indented
       dumper dumped
 
-      compareParsers positive unindented noAction
-      compareParsers positive indented   noAction
-      compareParsers positive dumped     noAction
+      parserComparer positive name unindented noAction
+      parserComparer positive name indented   noAction
+      parserComparer positive name dumped     noAction
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let functionalTestCases (dumper : string -> unit) =
+  let testCases = Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases|]
+
+  infof "Running %d functional testcases..." testCases.Length
+
+  runFunctionalTestCases
+    "FUNCTIONAL TEST"
+    (compareParsers ReferenceJsonModule.parse)
+    testCases
+    dumper
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let filterForJsonNet (_,name,_) =
+  match name with
+  | "Sample: Dates.json"                  -> false  // JSON.NET parses dates, MiniJson doesn't (as JSON has no concept of Dates)
+  | "Sample: GitHub.json"                 -> false  // JSON.NET fails to parse GitHub.Json (valid according to http://jsonlint.com)
+  | "Sample: optionals.json"              -> false  // JSON.NET fails to parse optionals.Json (valid according to http://jsonlint.com)
+  | _ when name.StartsWith ("Negative: ") -> false  // JSON.NET is more relaxed when parsing therefore negative testcases can't be compared
+  | _ -> true
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let functionalJsonNetTestCases (dumper : string -> unit) =
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    |> Array.filter filterForJsonNet
+
+  infof "Running %d functional testcases (JSON.NET)..." testCases.Length
+
+  runFunctionalTestCases
+    "JSON.NET TEST"
+    (compareParsers MiniJson.Tests.JsonNet.parse)
+    testCases
+    dumper
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let filterForPerformance (_,name : string ,tc : string) =
+  match name with
+  | _ when name.StartsWith ("Negative: ") -> false  // Negative test cases aren't tested for performance
+  | _ -> tc.Length > 500
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
 let performanceTestCases (dumper : string -> unit) =
-  let testCases = explicitTestCases |> Array.filter (fun (_, tc) -> tc.Length > 1000)
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    |> Array.filter filterForPerformance
+
+  infof "Running %d performance testcases..." testCases.Length
 
   let sw = Stopwatch ()
 
@@ -194,17 +250,18 @@ let performanceTestCases (dumper : string -> unit) =
 
     sw.ElapsedMilliseconds, result
 
-  for positive, testCase in testCases do
+  for positive, name, testCase in testCases do
     dumper "---==> PERFORMANCE TEST <==---"
+    dumper name
     dumper (if positive then "positive" else "negative")
     dumper testCase
 
     let iterations = 100
 
-    let reference , _ = timeIt iterations (fun _ -> referenceParse testCase)
+    let reference , _ = timeIt iterations (fun _ -> ReferenceJsonModule.parse testCase)
     let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
 
-    ignore <| test_eq true (reference > actual) testCase
+    ignore <| test_eq true (reference > actual) name
 
     dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
 // ----------------------------------------------------------------------------------------------
@@ -217,17 +274,16 @@ let main argv =
 
     Environment.CurrentDirectory <- AppDomain.CurrentDomain.BaseDirectory
 
-#if DUMP_JSON
+#if !DUMP_JSON
     let dumper _            = ()
 #else
     use dump = File.CreateText "dump.txt"
     let dumper (s : string) = dump.WriteLine s
 #endif
 
-    info "Running functional testcases..."
     functionalTestCases dumper
+    functionalJsonNetTestCases dumper
 #if !DEBUG
-    info "Running performance testcases..."
     performanceTestCases dumper
 #endif
 

@@ -51,9 +51,9 @@ let highlightf  f     = kprintf highlight f
 let test_failure msg  = errorf "TEST: %s" msg
 let test_failuref f   = kprintf test_failure f
 
-let test_eq e a tc    =
+let test_eq e a nm    =
   if e = a then true
   else
-    errorf "TEST_EQ: %A = %A (%s)" e a tc
+    errorf "TEST_EQ: %A = %A (%s)" e a nm
     false
 // ----------------------------------------------------------------------------------------------

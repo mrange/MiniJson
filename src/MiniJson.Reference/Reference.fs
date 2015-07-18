@@ -25,6 +25,7 @@ open System.Threading
 module Details =
   open FParsec.Primitives
   open FParsec.CharParsers
+
   open MiniJson.JsonModule
 
   type UserState  = unit
