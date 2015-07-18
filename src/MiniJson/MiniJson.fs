@@ -17,10 +17,10 @@
 /// MiniJson aims to be a minimal yet compliant JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
-#if INTERNALIZE_MINIJSON
-module internal MiniJson.JsonModule
-#else
+#if PUBLIC_MINIJSON
 module MiniJson.JsonModule
+#else
+module internal MiniJson.JsonModule
 #endif
 open System
 open System.Collections.Generic
