@@ -57,10 +57,8 @@ module Details =
         pipe3 (anyOf "eE") psign puint64 (fun _ sign ui -> pown 10.0 (int (sign (double ui))))
         <|>% 1.0
       let pzero =
-        charReturn '0' 0.0
-      let pfull =
-        pipe3 puint64 pfrac pexp (fun i f e -> (float i + f)*e)
-      pipe2 pminus (pzero <|> pfull) (fun s n -> JsonNumber (s n))
+        charReturn '0' 0UL
+      pipe4 pminus (pzero <|> puint64) pfrac pexp (fun s i f e -> JsonNumber (s (float i + f)*e))
 
     let prawstring =
       let phex =

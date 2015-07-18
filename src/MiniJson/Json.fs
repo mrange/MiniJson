@@ -13,8 +13,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
-module MiniJson.JsonModule
 
+/// MiniJson wants to be a minimal compliant JSON parser with reasonable performance 
+///   JSON Specification: http://json.org/
+///   JSON Lint         : http://jsonlint.com/
+#if INTERNALIZE_MINIJSON
+module internal MiniJson.JsonModule
+#else
+module MiniJson.JsonModule
+#endif
 open System
 open System.Collections.Generic
 open System.Diagnostics
@@ -271,7 +278,17 @@ module Details =
         v.Expected (pos, "digit")
         not first
 
-  let rec tryParse_Fraction (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+  let tryParse_UInt0 (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<uint64>) : bool =
+    // tryParse_UInt0 only consumes 0 if input is 0123, this in order to be conformant with spec
+    let zero          = tryConsume_Char '0' v s &pos
+
+    if zero then
+      r <- 0UL
+      true
+    else
+      tryParse_UInt true v s &pos &r
+
+  let tryParse_Fraction (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     if tryConsume_Char '.' v s &pos then
       let spos        = pos
       let mutable ui  = 0UL
@@ -283,7 +300,7 @@ module Details =
     else
       true  // Fraction is optional
 
-  let rec tryParse_Exponent (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
+  let tryParse_Exponent (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
     let mutable exp = ' '
     if tryParse_AnyOf [|'e';'E'|] v s &pos &exp then
       let mutable sign = '+'
@@ -301,25 +318,21 @@ module Details =
 
   let tryParse_Number (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
     let hasSign       = tryConsume_Char '-' v s &pos
-    let zero          = tryConsume_Char '0' v s &pos
     let inline sign v = if hasSign then -v else v
 
-    if zero then
-      v.NumberValue (sign 0.0)
+    let mutable i = 0UL
+    let mutable f = 0.0
+    let mutable e = 0
+
+    let result =
+      tryParse_UInt0 v s &pos &i
+      && tryParse_Fraction v s &pos &f
+      && tryParse_Exponent v s &pos &e
+
+    if result then
+      v.NumberValue (sign ((float i + f) * (pow e)))
     else
-      let mutable i = 0UL
-      let mutable f = 0.0
-      let mutable e = 0
-
-      let result =
-        tryParse_UInt true v s &pos &i
-        && tryParse_Fraction v s &pos &f
-        && tryParse_Exponent v s &pos &e
-
-      if result then
-        v.NumberValue (sign ((float i + f) * (pow e)))
-      else
-        false
+      false
 
   let rec tryParse_UnicodeChar (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) (n : int) (r : int) : bool =
     // TODO: Check this is tail recursive
@@ -470,16 +483,12 @@ module Details =
 
   type JsonBuilder =
     | BuilderRoot    of Json ref
-    | BuilderObject  of ResizeArray<string*Json>
+    | BuilderObject  of string ref*ResizeArray<string*Json>
     | BuilderArray   of ResizeArray<Json>
 
   [<Sealed>]
   type JsonParseVisitor() =
     let context       = Stack<JsonBuilder> ()
-
-    // TODO: Fix key
-    let mutable key   = ""
-    let mutable root  = JsonNull
 
     let push v        =
       context.Push v
@@ -487,15 +496,22 @@ module Details =
 
     let pop ()        =
       match context.Pop () with
-      | BuilderRoot vr    -> !vr
-      | BuilderArray  vs  -> JsonArray (vs.ToArray ())
-      | BuilderObject ms  -> JsonObject (ms.ToArray ())
+      | BuilderRoot   vr      -> !vr
+      | BuilderObject (_,ms)  -> JsonObject (ms.ToArray ())
+      | BuilderArray  vs      -> JsonArray (vs.ToArray ())
+
+    let setKey k      =
+      match context.Peek () with
+      | BuilderRoot   vr      -> ()
+      | BuilderObject (rk,_)  -> rk := k
+      | BuilderArray  vs      -> ()
+      true
 
     let add v         =
       match context.Peek () with
-      | BuilderRoot vr    -> vr := v
-      | BuilderObject ms  -> ms.Add (key, v)
-      | BuilderArray  vs  -> vs.Add v
+      | BuilderRoot   vr      -> vr := v
+      | BuilderObject (rk,ms) -> ms.Add (!rk, v)
+      | BuilderArray  vs      -> vs.Add v
       true
 
     do
@@ -511,9 +527,9 @@ module Details =
 
       override x.ArrayBegin   ()      = push (BuilderArray <| ResizeArray<_>(defaultSize))
       override x.ArrayEnd     ()      = add <| pop ()
-      override x.ObjectBegin  ()      = push (BuilderObject <| ResizeArray<_>(defaultSize))
+      override x.ObjectBegin  ()      = push (BuilderObject <| (ref "", ResizeArray<_>(defaultSize)))
       override x.ObjectEnd    ()      = add <| pop ()
-      override x.MemberKey    v       = key <- v; true
+      override x.MemberKey    v       = setKey v
 
       override x.ExpectedChar (p,e)   = ()
       override x.Expected     (p,e)   = ()
