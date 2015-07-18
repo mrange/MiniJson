@@ -227,13 +227,11 @@ let filterForPerformance (_,name : string ,tc : string) =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let performanceTestCases (dumper : string -> unit) =
-  let testCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
-    |> Array.filter filterForPerformance
-
-  infof "Running %d performance testcases..." testCases.Length
-
+let runPerformanceTestCases
+  (category       : string                  )
+  (referenceParser: string -> ParseResult   )
+  (testCases      : (bool*string*string) [] )
+  (dumper         : string -> unit          ) : unit =
   let sw = Stopwatch ()
 
   let timeIt n (a : unit -> 'T) : int64*'T =
@@ -251,19 +249,50 @@ let performanceTestCases (dumper : string -> unit) =
     sw.ElapsedMilliseconds, result
 
   for positive, name, testCase in testCases do
-    dumper "---==> PERFORMANCE TEST <==---"
+    dumper <| sprintf "---==> %s <==---" category
     dumper name
     dumper (if positive then "positive" else "negative")
     dumper testCase
 
     let iterations = 100
 
-    let reference , _ = timeIt iterations (fun _ -> ReferenceJsonModule.parse testCase)
+    let reference , _ = timeIt iterations (fun _ -> referenceParser testCase)
     let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
 
     ignore <| test_eq true (reference > actual) name
 
     dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let performanceTestCases (dumper : string -> unit) =
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    |> Array.filter filterForPerformance
+
+  infof "Running %d performance testcases..." testCases.Length
+
+  runPerformanceTestCases
+    "PERFORMANCE TEST"
+    ReferenceJsonModule.parse
+    testCases
+    dumper
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let performanceJsonNetTestCases (dumper : string -> unit) =
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    |> Array.filter filterForJsonNet
+    |> Array.filter filterForPerformance
+
+  infof "Running %d performance testcases (JSON.NET)..." testCases.Length
+
+  runPerformanceTestCases
+    "PERFORMANCE TEST (JSON.NET)"
+    MiniJson.Tests.JsonNet.parse
+    testCases
+    dumper
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
@@ -274,17 +303,19 @@ let main argv =
 
     Environment.CurrentDirectory <- AppDomain.CurrentDomain.BaseDirectory
 
-#if !DUMP_JSON
+#if DUMP_JSON
     let dumper _            = ()
 #else
     use dump = File.CreateText "dump.txt"
     let dumper (s : string) = dump.WriteLine s
 #endif
 
-    functionalTestCases dumper
-    functionalJsonNetTestCases dumper
+    functionalTestCases         dumper
+    functionalJsonNetTestCases  dumper
 #if !DEBUG
-    performanceTestCases dumper
+    performanceTestCases        dumper
+//  TODO: Improve performance
+//    performanceJsonNetTestCases dumper
 #endif
 
   with
