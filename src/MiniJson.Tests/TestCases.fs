@@ -82,7 +82,7 @@ let explicitTestCases =
     let path  = Path.Combine (AppDomain.CurrentDomain.BaseDirectory, "TestCases")
     let jsons = Directory.GetFiles (path, "*.json")
 
-    jsons 
+    jsons
     |> Array.map (fun p -> true, File.ReadAllText p)
   with
   | ex -> errorf "EXCEPTION: %s" ex.Message; [||]

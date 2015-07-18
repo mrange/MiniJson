@@ -199,8 +199,8 @@ let performanceTestCases (dumper : string -> unit) =
 
     let iterations = 100
 
-    let expected, _ = timeIt iterations (fun _ -> ReferenceJsonModule.parse testCase)    
-    let actual  , _ = timeIt iterations (fun _ -> parse false testCase)    
+    let expected, _ = timeIt iterations (fun _ -> ReferenceJsonModule.parse testCase)
+    let actual  , _ = timeIt iterations (fun _ -> parse false testCase)
 
     ignore <| test_eq true (expected > actual) testCase
 
