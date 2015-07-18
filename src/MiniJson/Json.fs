@@ -640,9 +640,9 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
     for i = windowBegin to windowEnd do
       let c =
         match s.[i] with
-        | 'n'
-        | 'r' -> ' '
-        | c   -> c
+        | '\n'
+        | '\r'  -> ' '
+        | c     -> c
       ch c
     line ()
     ignore <| sb.Append ('-', windowPos)

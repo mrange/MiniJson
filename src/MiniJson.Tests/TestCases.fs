@@ -50,8 +50,13 @@ let positiveTestCases =
     """["\u0123\u4567\u89AB\uCDEF"]"""
     """["\u0123\u4567\u89ab\ucdef"]"""
     """[false,true,null]"""
-    """ [ false ,true, null ] """
+    """[ false ,true, null ]"""
     """[[], null, [true]]"""
+    """{"abc":123}"""
+    """{"abc" :123}"""
+    """{ "abc":123}"""
+    """{ "abc" :123}"""
+    "\t[\rfalse \r\n, true\n]\t"
   |] |> Array.map (fun v -> true, sprintf "Positive: %s" v, v)
 
 let negativeTestCases =
@@ -78,6 +83,13 @@ let negativeTestCases =
     """["Hello\u"]"""
     """["Hello\u00"]"""
     """["Hello\uPQ"]"""
+    """{abc:3}"""
+    """{"abc:3}"""
+    """{"abc":}"""
+    """["Hello this is a somewhat wide errornous string, to demonstrate \ERROR window"]"""
+    """["Hello this is a wide errornous string, to demonstrate error window capabilities... The window is around 60 chars so now is the time for \ERROR"]"""
+    """["Hello this is a wide errornous string, to demonstrate error window capabilities, here is the \ERROR... The window is around 60 chars"]"""
+    """["Early \ERROR, hello this is a wide errornous string, to demonstrate error window capabilities. The window is around 60 chars"]"""
   |] |> Array.map (fun v -> false, sprintf "Negative: %s" v, v)
 
 let sampleTestCases =
