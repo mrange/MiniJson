@@ -17,7 +17,9 @@ open Internal.MiniJson.JsonModule
 
 [<EntryPoint>]
 let main argv =
-  match parse true """{"Hello":"There"}""" with
-  | Success json        -> printfn "Success: %s"    <| toString false json
+  let jsonText = """{"Hello":"There"}"""
+
+  match parse true jsonText with  // true for full error-info
+  | Success json        -> printfn "Success\n%s"    <| toString true json  // true to indent JSON
   | Failure (msg, pos)  -> printfn "Failure@%d\n%s" pos msg
   0
