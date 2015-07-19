@@ -16,9 +16,20 @@
 namespace MiniJson.AssemblyInfo
 
 open System.Reflection
+open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
-[<assembly: AssemblyTitle("MiniJson.Paket")>]
-[<assembly: Guid("c3711d8d-21a1-4e9a-b130-f4b4193c24e6")>]
+[<assembly: AssemblyDescription("MiniJson is a Json library licensed under Apache License, Version 2.0")>]
+[<assembly: AssemblyConfiguration("")>]
+[<assembly: AssemblyCompany("")>]
+[<assembly: AssemblyProduct("MiniJson")>]
+[<assembly: AssemblyCopyright("Copyright © Mårten Rånge 2015")>]
+[<assembly: AssemblyTrademark("")>]
+[<assembly: AssemblyCulture("")>]
+
+[<assembly: ComVisible(false)>]
+
+[<assembly: AssemblyVersion("1.0.0.0")>]
+[<assembly: AssemblyFileVersion("1.0.0.0")>]
 do
     ()

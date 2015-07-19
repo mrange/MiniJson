@@ -2,9 +2,10 @@
 
 Minimal conforming JSON parser for F#
 
-The best way of referencing MiniJson is to use paket http references
+The best way of referencing MiniJson is to use [Paket](http://www.nuget.org/packages/Paket/)
+[http references](http://fsprojects.github.io/Paket/http-dependencies.html)
 
-paket.dependencies
+[paket.dependencies](http://fsprojects.github.io/Paket/dependencies-file.html)
 ```
 http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.fs
 ```

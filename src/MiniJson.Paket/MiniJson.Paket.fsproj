@@ -54,6 +54,9 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
+    <Compile Include="..\Global_AssemblyInfo.fs">
+      <Link>Global_AssemblyInfo.fs</Link>
+    </Compile>
     <Compile Include="AssemblyInfo.fs" />
     <Compile Include="paket-files/raw.githubusercontent.com/MiniJson.fs" />
     <Compile Include="paket-files/raw.githubusercontent.com/MiniJson.Dynamic.fs" />

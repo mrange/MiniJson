@@ -13,27 +13,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
-namespace MiniJson.Reference.AssemblyInfo
+namespace MiniJson.AssemblyInfo
 
 open System.Reflection
-open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
 [<assembly: AssemblyTitle("MiniJson.Reference")>]
-[<assembly: AssemblyDescription("")>]
-[<assembly: AssemblyConfiguration("")>]
-[<assembly: AssemblyCompany("")>]
-[<assembly: AssemblyProduct("MiniJson.Reference")>]
-[<assembly: AssemblyCopyright("Copyright © Mårten Rånge 2015")>]
-[<assembly: AssemblyTrademark("")>]
-[<assembly: AssemblyCulture("")>]
-
-[<assembly: ComVisible(false)>]
-
 [<assembly: Guid("821c50d0-c33e-4ceb-b1c5-767ca682083a")>]
-
-[<assembly: AssemblyVersion("1.0.0.0")>]
-[<assembly: AssemblyFileVersion("1.0.0.0")>]
-
 do
     ()

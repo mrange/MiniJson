@@ -56,6 +56,9 @@
   </Choose>
   <Import Project="$(FSharpTargetsPath)" />
   <ItemGroup>
+    <Compile Include="..\Global_AssemblyInfo.fs">
+      <Link>Global_AssemblyInfo.fs</Link>
+    </Compile>
     <Compile Include="AssemblyInfo.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
