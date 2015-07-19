@@ -57,6 +57,21 @@ let test_eq e a nm    =
     errorf "TEST_EQ: %A = %A (%s)" e a nm
     false
 
+let test_gt e a nm    =
+  if e > a then true
+  else
+    errorf "TEST_GT: %A > %A (%s)" e a nm
+    false
+
+let test_lt e a nm    =
+  if e < a then true
+  else
+    errorf "TEST_LT: %A < %A (%s)" e a nm
+    false
+
 let check_eq e a nm   = ignore <| test_eq e a nm
+let check_gt e a nm   = ignore <| test_gt e a nm
+let check_lt e a nm   = ignore <| test_lt e a nm
+
 
 // ----------------------------------------------------------------------------------------------

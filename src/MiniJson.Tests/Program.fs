@@ -224,13 +224,16 @@ let functionalJsonNetTestCases (dumper : string -> unit) =
 let filterForPerformance (_,name : string ,tc : string) =
   match name with
   | _ when name.StartsWith ("Negative: ") -> false  // Negative test cases aren't tested for performance
-  | _ -> tc.Length > 500
+  | "Sample: contacts.json"               -> false  // contacts.json doesn't have enough complexity
+  | _ -> tc.Length > 500                            // Allow all other JSON documents bigger than 500 char
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
 let runPerformanceTestCases
   (category       : string                  )
   (referenceParser: string -> ParseResult   )
+  (iterations     : int                     )
+  (expected_ratio : float                   )
   (testCases      : (bool*string*string) [] )
   (dumper         : string -> unit          ) : unit =
   let sw = Stopwatch ()
@@ -255,12 +258,16 @@ let runPerformanceTestCases
     dumper (if positive then "positive" else "negative")
     dumper testCase
 
-    let iterations = 100
-
     let reference , _ = timeIt iterations (fun _ -> referenceParser testCase)
     let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
 
-    check_eq true (reference > actual) name
+    let actual_ratio  = float reference / max (float actual) 1.
+
+    let ref           = float reference / float iterations
+    let act           = float actual / float iterations
+
+    check_lt expected_ratio     actual_ratio            name
+    check_gt ref                (expected_ratio * act)  name
 
     dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
 // ----------------------------------------------------------------------------------------------
@@ -276,6 +283,8 @@ let performanceTestCases (dumper : string -> unit) =
   runPerformanceTestCases
     "PERFORMANCE TEST"
     ReferenceJsonModule.parse
+    100
+    3.0
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -292,6 +301,8 @@ let performanceJsonNetTestCases (dumper : string -> unit) =
   runPerformanceTestCases
     "PERFORMANCE TEST (JSON.NET)"
     MiniJson.Tests.JsonNet.parse
+    1000
+    0.5   // In general MiniJson performs comparable to Json.NET but topic.json lags behind on x86
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -485,8 +496,7 @@ let main argv =
     errorReportingTestCases     dumper
 #if !DEBUG
     performanceTestCases        dumper
-//  TODO: Improve performance
-//    performanceJsonNetTestCases dumper
+    performanceJsonNetTestCases dumper
 #endif
 
   with
