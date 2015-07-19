@@ -1,8 +1,8 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata schemaVersion="2">
-    <id>MiniJson</id>
-    <version>2.0.0</version>
+    <id>M3.MiniJson</id>
+    <version>2.0.1</version>
     <title>MiniJson</title>
     <authors>Mårten Rånge</authors>
     <owners>Mårten Rånge</owners>
@@ -15,13 +15,14 @@
     <frameworkAssemblies>
     </frameworkAssemblies>
     <releaseNotes>
-        * 1.0.0   - Initial release
-        * 2.0.0   - Internalizing internal parser details (breaking change)
+      * 1.0.0   - Initial release
+      * 2.0.0   - Internalizing internal parser details (breaking change)
+      * 2.0.1   - Documentation update
     </releaseNotes>
   </metadata>
   <files>
-    <file src="..\MiniJson\bin\Release\MiniJson.dll" target="lib/net45" />
-    <file src="..\MiniJson\bin\Release\MiniJson.pdb" target="lib/net45" />
-    <file src="..\MiniJson\bin\Release\MiniJson.XML" target="lib/net45" />
+    <file src="..\MiniJson\bin\Release\MiniJson.dll" target="lib/net452" />
+    <file src="..\MiniJson\bin\Release\MiniJson.pdb" target="lib/net452" />
+    <file src="..\MiniJson\bin\Release\MiniJson.XML" target="lib/net452" />
   </files>
 </package>

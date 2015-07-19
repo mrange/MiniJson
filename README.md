@@ -17,7 +17,7 @@ http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJ
 
 To install MiniJson using NuGet, run the following command in the [Package Manager Console](http://docs.nuget.org/consume/package-manager-console)
 ```
-PM> Install-Package MiniJson
+PM> Install-Package M3.MiniJson
 ```
 
 Using MiniJson is straight-forward
@@ -48,5 +48,6 @@ let main argv =
 # TODO
 
 1. Reduce MiniJson platform requirements
+1. Add MiniJson Strong Name
 1. Improve MiniJson doc
 1. Improve README.md
