@@ -23,7 +23,7 @@ open System.Text
 
 open MiniJson
 open MiniJson.JsonModule
-open MiniJson.JsonPathModule
+open MiniJson.DynamicJsonModule
 open MiniJson.Tests.Test
 open MiniJson.Tests.TestCases
 // ----------------------------------------------------------------------------------------------
@@ -336,7 +336,7 @@ let toStringTestCases (dumper : string -> unit) =
 
 // ----------------------------------------------------------------------------------------------
 let pathTestCases (dumper : string -> unit) =
-  infof "Running json path testcases..."
+  infof "Running Dynamic JSON testcases..."
 
   let test_scalar e a =
     match e,a with
@@ -385,9 +385,7 @@ let pathTestCases (dumper : string -> unit) =
   let defaultNumber   v = ScalarNumber  (defaultPath, v)
   let defaultString   v = ScalarString  (defaultPath, v)
 
-  let path = rootObject.Path
-
-  let x = !!path
+  let path = rootObject.Query
 
   check_scalar (defaultNull           ) (!!path?Object?Null         )
   check_scalar (defaultBoolean false  ) (!!path?Object?Boolean      )
@@ -404,6 +402,63 @@ let pathTestCases (dumper : string -> unit) =
   check_scalar (defaultNumber  0.     ) (!!path?Array .[2]          )
   check_scalar (defaultString  "Hello") (!!path?Array .[3]          )
 
+  check_eq false    path                .HasValue "HasValue: path"
+  check_eq false    path?Object?Null    .HasValue "HasValue: path?Object?Null"
+  check_eq true     path?Object?Boolean .HasValue "HasValue: path?Object?Boolean"
+  check_eq true     path?Object?Number  .HasValue "HasValue: path?Object?Number"
+  check_eq true     path?Object?String  .HasValue "HasValue: path?Object?String"
+  check_eq false    path?Object?Invalid .HasValue "HasValue: path?Object?Invalid"
+  check_eq false    path?Missing?Invalid.HasValue "HasValue: path?Missing?Invalid"
+
+  check_eq false    path                .AsBool   "AsBool: path"
+  check_eq false    path?Object?Null    .AsBool   "AsBool: path?Object?Null"
+  check_eq false    path?Object?Boolean .AsBool   "AsBool: path?Object?Boolean"
+  check_eq true     path?Object?Number  .AsBool   "AsBool: path?Object?Number"
+  check_eq true     path?Object?String  .AsBool   "AsBool: path?Object?String"
+  check_eq false    path?Object?Invalid .AsBool   "AsBool: path?Object?Invalid"
+  check_eq false    path?Missing?Invalid.AsBool   "AsBool: path?Missing?Invalid"
+
+  check_eq 0.       path                .AsFloat  "AsFloat: path"
+  check_eq 0.       path?Object?Null    .AsFloat  "AsFloat: path?Object?Null"
+  check_eq 0.       path?Object?Boolean .AsFloat  "AsFloat: path?Object?Boolean"
+  check_eq 123.     path?Object?Number  .AsFloat  "AsFloat: path?Object?Number"
+  check_eq 0.       path?Object?String  .AsFloat  "AsFloat: path?Object?String"
+  check_eq 0.       path?Object?Invalid .AsFloat  "AsFloat: path?Object?Invalid"
+  check_eq 0.       path?Missing?Invalid.AsFloat  "AsFloat: path?Missing?Invalid"
+
+  check_eq ""       path                .AsString "AsString: path"
+  check_eq ""       path?Object?Null    .AsString "AsString: path?Object?Null"
+  check_eq "false"  path?Object?Boolean .AsString "AsString: path?Object?Boolean"
+  check_eq "123"    path?Object?Number  .AsString "AsString: path?Object?Number"
+  check_eq "There"  path?Object?String  .AsString "AsString: path?Object?String"
+  check_eq ""       path?Object?Invalid .AsString "AsString: path?Object?Invalid"
+  check_eq ""       path?Missing?Invalid.AsString "AsString: path?Missing?Invalid"
+
+  let eRoot         = "NotScalar: root"
+  let eInvalid      = "InvalidPath: root.Object!Invalid"
+  let eMissing      = "InvalidPath: root!Missing!Invalid"
+
+  check_eq eRoot    path                  .AsExpandedString     "AsExpandedString: path"
+  check_eq "null"   path?Object?Null      .AsExpandedString     "AsExpandedString: path?Object?Null"
+  check_eq "false"  path?Object?Boolean   .AsExpandedString     "AsExpandedString: path?Object?Boolean"
+  check_eq "123"    path?Object?Number    .AsExpandedString     "AsExpandedString: path?Object?Number"
+  check_eq "There"  path?Object?String    .AsExpandedString     "AsExpandedString: path?Object?String"
+  check_eq eInvalid path?Object?Invalid   .AsExpandedString     "AsExpandedString: path?Object?Invalid"
+  check_eq eMissing path?Missing?Invalid  .AsExpandedString     "AsExpandedString: path?Missing?Invalid"
+
+  check_eq -1.      (path                 .ConvertToFloat -1.)  "ConvertToFloat: path"
+  check_eq 0.       (path?Object?Null     .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Null"
+  check_eq 0.       (path?Object?Boolean  .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Boolean"
+  check_eq 123.     (path?Object?Number   .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Number"
+  check_eq -1.      (path?Object?String   .ConvertToFloat -1.)  "ConvertToFloat: path?Object?String"
+  check_eq -1.      (path?Object?Invalid  .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Invalid"
+  check_eq -1.      (path?Missing?Invalid .ConvertToFloat -1.)  "ConvertToFloat: path?Missing?Invalid"
+
+
+  let eLongPath = "InvalidPath: root.Object.Array.[0]!Invalid![100]!Missing"
+  let aLongPath = path?Object?Array.[0]?Invalid.[100]?Missing.AsExpandedString
+
+  check_eq eLongPath aLongPath "Long path"
 
 // ----------------------------------------------------------------------------------------------
 

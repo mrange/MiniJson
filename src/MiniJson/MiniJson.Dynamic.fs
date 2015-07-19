@@ -18,9 +18,9 @@
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
 #if PUBLIC_MINIJSON
-module MiniJson.JsonPathModule
+module MiniJson.DynamicJsonModule
 #else
-module internal Internal.MiniJson.JsonPathModule
+module internal Internal.MiniJson.DynamicJsonModule
 #endif
 open System
 open System.Globalization
@@ -49,20 +49,22 @@ module Details =
     let rec appendParents (sb : StringBuilder) = function
       | []    -> ()
       | p::ps ->
+        // Tail-recursiveness not so important here as we expect only a few parents
+        appendParents sb ps
         match p with
         | (QueryProperty name, _) -> ch sb '.'; str sb name
         | (QueryIndexOf i, _)     -> str sb ".["; ii sb i; ch sb ']'
-        appendParents sb ps
 
     let rec appendErrors (sb : StringBuilder)  = function
       | []    -> ()
       | e::es ->
+        // Tail-recursiveness not so important here as we expect only a few errors
+        appendErrors sb es
         match e with
         | ErrorNotObject name
         | ErrorUnknownProperty name -> ch sb '!'; str sb name
         | ErrorNotIndexable i
         | ErrorIndexOutBounds i     -> str sb "!["; ii sb i; ch sb ']'
-        appendErrors sb es
 
 open Details
 
@@ -85,12 +87,12 @@ type JsonScalar =
     | ScalarNotScalar   _
     | ScalarInvalidPath _ -> true
 
-  member x.IsNull : bool =
+  member x.HasValue : bool =
     match x with
-    | ScalarNull        _ -> true
+    | ScalarNull        _ -> false
     | ScalarBoolean     _
     | ScalarNumber      _
-    | ScalarString      _
+    | ScalarString      _ -> true
     | ScalarNotScalar   _
     | ScalarInvalidPath _ -> false
 
@@ -104,36 +106,51 @@ type JsonScalar =
     | ScalarInvalidPath _     -> false
 
   member x.AsFloat : float =
+    x.ConvertToFloat 0.
+
+  member x.AsString : string =
+    x.ToString false
+
+  member x.AsExpandedString : string =
+    x.ToString true
+
+  member x.ConvertToFloat (defaultTo : float) : float =
     match x with
     | ScalarNull        _     -> 0.
     | ScalarBoolean     (_,b) -> if b then 1. else 0.
     | ScalarNumber      (_,n) -> n
     | ScalarString      (_,s) ->
       let b,f = Double.TryParse (s, NumberStyles.Float, CultureInfo.InvariantCulture)
-      if b then f else Double.NaN
+      if b then f else defaultTo
     | ScalarNotScalar   _
-    | ScalarInvalidPath _     -> Double.NaN
+    | ScalarInvalidPath _     -> defaultTo
 
-  member x.AsString : string =
+  member x.ToString (expand : bool) : string =
     match x with
-    | ScalarNull      _             -> "null"
+    | ScalarNull      _             -> if expand then "null" else ""
     | ScalarBoolean   (_,b)         -> if b then "true" else "false"
     | ScalarNumber    (_,n)         -> n.ToString CultureInfo.InvariantCulture
     | ScalarString    (_,s)         -> s
     | ScalarNotScalar path          ->
-      let json, parents = path
-      let sb = StringBuilder ("NotScalar: root")
-      appendParents sb parents
-      sb.ToString ()
+      if expand then
+        let json, parents = path
+        let sb = StringBuilder ("NotScalar: root")
+        appendParents sb parents
+        sb.ToString ()
+      else
+        ""
     | ScalarInvalidPath invalidPath ->
-      let errors, json, parents = invalidPath
-      let sb = StringBuilder ("InvalidPath: root")
-      appendParents sb parents
-      appendErrors  sb errors
-      sb.ToString ()
+      if expand then
+        let errors, json, parents = invalidPath
+        let sb = StringBuilder ("InvalidPath: root")
+        appendParents sb parents
+        appendErrors  sb errors
+        sb.ToString ()
+      else
+        ""
 
-    override x.ToString () : string =
-      x.AsString
+  override x.ToString () : string =
+      x.ToString true
 
 type  JsonPath =
   | PathOk    of Path
@@ -206,6 +223,24 @@ type  JsonPath =
     | PathError (errors, json, parents) ->
       PathError ((ErrorNotObject name)::errors, json, parents)
 
+  member x.HasValue : bool =
+    x.Eval.HasValue
+
+  member x.AsBool : bool =
+    x.Eval.AsBool
+
+  member x.AsFloat : float =
+    x.Eval.AsFloat
+
+  member x.AsString : string =
+    x.Eval.AsString
+
+  member x.AsExpandedString : string =
+    x.Eval.AsExpandedString
+
+  member x.ConvertToFloat (defaultTo : float) : float =
+    x.Eval.ConvertToFloat defaultTo
+
   override x.ToString () : string =
     match x with
     | PathOk (_, parents) ->
@@ -224,8 +259,7 @@ type  JsonPath =
   static member ( !! ) (path : JsonPath) : JsonScalar =
     path.Eval
 
-
 let inline makePath (json : Json) = PathOk (json, [])
 
 type Json with
-  member x.Path : JsonPath = makePath x
+  member x.Query : JsonPath = makePath x
