@@ -20,7 +20,15 @@
 #if PUBLIC_MINIJSON
 module MiniJson.JsonModule
 #else
+// Due to what seems to be an issue with the F# compiler preventing
+//  access to internal operator ? from within the same assembly
+//  define INTERNAL_MINIJSON_WORKAROUND to suppress internalizing of
+//  MiniJson.
+#if INTERNAL_MINIJSON_WORKAROUND
+module Internal.MiniJson.JsonModule
+#else
 module internal Internal.MiniJson.JsonModule
+#endif
 #endif
 open System
 open System.Collections.Generic

@@ -46,7 +46,7 @@ let main argv =
       let id    = v?id.AsString
       let name  = v?name.AsString
       let age   = v?age.AsFloat
-      printfn "Record - %d: id:%s, name:%s, age:%d" i id name age
+      printfn "Record - %d: id:%s, name:%s, age:%f" i id name age
   0
 ```
 

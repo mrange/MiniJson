@@ -20,7 +20,15 @@
 #if PUBLIC_MINIJSON
 module MiniJson.DynamicJsonModule
 #else
+// Due to what seems to be an issue with the F# compiler preventing
+//  access to internal operator ? from within the same assembly
+//  define INTERNAL_MINIJSON_WORKAROUND to suppress internalizing of
+//  MiniJson.
+#if INTERNAL_MINIJSON_WORKAROUND
+module Internal.MiniJson.DynamicJsonModule
+#else
 module internal Internal.MiniJson.DynamicJsonModule
+#endif
 #endif
 open System
 open System.Globalization
@@ -152,7 +160,7 @@ type JsonScalar =
   override x.ToString () : string =
       x.ToString true
 
-type  JsonPath =
+type JsonPath =
   | PathOk    of Path
   | PathError of InvalidPath
 
