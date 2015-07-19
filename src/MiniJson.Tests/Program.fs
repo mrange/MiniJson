@@ -283,8 +283,8 @@ let performanceTestCases (dumper : string -> unit) =
   runPerformanceTestCases
     "PERFORMANCE TEST"
     ReferenceJsonModule.parse
-    100
-    3.0
+    200
+    4.0
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -302,7 +302,7 @@ let performanceJsonNetTestCases (dumper : string -> unit) =
     "PERFORMANCE TEST (JSON.NET)"
     MiniJson.Tests.JsonNet.parse
     1000
-    0.5   // In general MiniJson performs comparable to Json.NET but topic.json lags behind on x86
+    0.9 // In general MiniJson performs favorable to Json.NET but topic.json is close to 1.
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------

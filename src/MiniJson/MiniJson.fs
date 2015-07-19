@@ -157,18 +157,18 @@ let toString doIndent (json : Json) : string =
 
 type IParseVisitor =
   interface
-    abstract NullValue    : unit        -> bool
-    abstract BoolValue    : bool        -> bool
-    abstract NumberValue  : double      -> bool
-    abstract StringValue  : string      -> bool
-    abstract ArrayBegin   : unit        -> bool
-    abstract ArrayEnd     : unit        -> bool
-    abstract ObjectBegin  : unit        -> bool
-    abstract ObjectEnd    : unit        -> bool
-    abstract MemberKey    : string      -> bool
-    abstract ExpectedChar : int*char    -> unit
-    abstract Expected     : int*string  -> unit
-    abstract Unexpected   : int*string  -> unit
+    abstract NullValue    : unit          -> bool
+    abstract BoolValue    : bool          -> bool
+    abstract NumberValue  : double        -> bool
+    abstract StringValue  : StringBuilder -> bool
+    abstract ArrayBegin   : unit          -> bool
+    abstract ArrayEnd     : unit          -> bool
+    abstract ObjectBegin  : unit          -> bool
+    abstract ObjectEnd    : unit          -> bool
+    abstract MemberKey    : StringBuilder -> bool
+    abstract ExpectedChar : int*char      -> unit
+    abstract Expected     : int*string    -> unit
+    abstract Unexpected   : int*string    -> unit
   end
 
 module internal Details =
@@ -408,17 +408,13 @@ module internal Details =
     && tryParse_Chars      sb     v s &pos
     && tryConsume_Char        '"' v s &pos
 
-  let tryParse_String (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    // TODO: Reuse StringBuilder
-    let sb = StringBuilder ()
+  let tryParse_String (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryParse_ToStringBuilder sb v s &pos
-    && v.StringValue (sb.ToString ())
+    && v.StringValue sb
 
-  let tryParse_MemberKey (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    // TODO: Reuse StringBuilder
-    let sb = StringBuilder ()
+  let tryParse_MemberKey (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryParse_ToStringBuilder sb v s &pos
-    && v.MemberKey (sb.ToString ())
+    && v.MemberKey sb
 
   let inline tryConsume_Delimiter first (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if first then true
@@ -426,64 +422,64 @@ module internal Details =
       tryConsume_Char         ',' v s &pos
       && consume_WhiteSpace         s &pos
 
-  let rec tryParse_ArrayValues first (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let rec tryParse_ArrayValues first (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if test_Char ']' s pos then
       true
     else
-      tryConsume_Delimiter    first v s &pos
-      && tryParse_Value             v s &pos
-      && tryParse_ArrayValues false v s &pos
+      tryConsume_Delimiter    first     v s &pos
+      && tryParse_Value             sb  v s &pos
+      && tryParse_ArrayValues false sb  v s &pos
 
-  and tryParse_Array (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    tryConsume_Char           '[' v s &pos
-    && consume_WhiteSpace           s &pos
+  and tryParse_Array (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    tryConsume_Char           '['     v s &pos
+    && consume_WhiteSpace               s &pos
     && v.ArrayBegin ()
-    && tryParse_ArrayValues true  v s &pos
-    && tryConsume_Char        ']' v s &pos
+    && tryParse_ArrayValues true  sb  v s &pos
+    && tryConsume_Char        ']'     v s &pos
     && v.ArrayEnd ()
 
-  and tryParse_ObjectMembers first (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_ObjectMembers first (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if test_Char '}' s pos then
       true
     else
-      tryConsume_Delimiter      first v s &pos
-      && tryParse_MemberKey           v s &pos
-      && consume_WhiteSpace             s &pos
-      && tryConsume_Char          ':' v s &pos
-      && consume_WhiteSpace             s &pos
-      && tryParse_Value               v s &pos
-      && tryParse_ObjectMembers false v s &pos
+      tryConsume_Delimiter      first     v s &pos
+      && tryParse_MemberKey           sb  v s &pos
+      && consume_WhiteSpace                 s &pos
+      && tryConsume_Char          ':'     v s &pos
+      && consume_WhiteSpace                 s &pos
+      && tryParse_Value               sb  v s &pos
+      && tryParse_ObjectMembers false sb  v s &pos
 
-  and tryParse_Object (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    tryConsume_Char               '{' v s &pos
-    && consume_WhiteSpace               s &pos
+  and tryParse_Object (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    tryConsume_Char               '{'     v s &pos
+    && consume_WhiteSpace                   s &pos
     && v.ObjectBegin ()
-    && tryParse_ObjectMembers    true v s &pos
-    && tryConsume_Char            '}' v s &pos
+    && tryParse_ObjectMembers    true sb  v s &pos
+    && tryConsume_Char            '}'     v s &pos
     && v.ObjectEnd ()
 
-  and tryParse_Value (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_Value (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     else
       let result =
         match ch s pos with
-        | 'n'                 -> tryParse_Null    v s &pos
-        | 't'                 -> tryParse_True    v s &pos
-        | 'f'                 -> tryParse_False   v s &pos
-        | '['                 -> tryParse_Array   v s &pos
-        | '{'                 -> tryParse_Object  v s &pos
-        | '"'                 -> tryParse_String  v s &pos
-        | '-'                 -> tryParse_Number  v s &pos
-        | c when isDigit c    -> tryParse_Number  v s &pos
+        | 'n'                 -> tryParse_Null        v s &pos
+        | 't'                 -> tryParse_True        v s &pos
+        | 'f'                 -> tryParse_False       v s &pos
+        | '['                 -> tryParse_Array   sb  v s &pos
+        | '{'                 -> tryParse_Object  sb  v s &pos
+        | '"'                 -> tryParse_String  sb  v s &pos
+        | '-'                 -> tryParse_Number      v s &pos
+        | c when isDigit c    -> tryParse_Number      v s &pos
         | _                   -> raiseValue v pos
       result && consume_WhiteSpace s &pos
-  let tryParse_RootValue (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_RootValue (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     else
       let result =
         match ch s pos with
-        | '['                 -> tryParse_Array   v s &pos
-        | '{'                 -> tryParse_Object  v s &pos
+        | '['                 -> tryParse_Array  sb v s &pos
+        | '{'                 -> tryParse_Object sb v s &pos
         | _                   -> raiseRoot v pos
       result && consume_WhiteSpace s &pos
 
@@ -538,13 +534,13 @@ module internal Details =
       override x.NullValue    ()      = add <| JsonNull
       override x.BoolValue    v       = add <| JsonBoolean v
       override x.NumberValue  v       = add <| JsonNumber v
-      override x.StringValue  v       = add <| JsonString v
+      override x.StringValue  v       = add <| JsonString (v.ToString ())
 
       override x.ArrayBegin   ()      = push (BuilderArray <| ResizeArray<_>(defaultSize))
       override x.ArrayEnd     ()      = add <| pop ()
       override x.ObjectBegin  ()      = push (BuilderObject <| (ref "", ResizeArray<_>(defaultSize)))
       override x.ObjectEnd    ()      = add <| pop ()
-      override x.MemberKey    v       = setKey v
+      override x.MemberKey    v       = setKey <| v.ToString ()
 
       override x.ExpectedChar (p,e)   = ()
       override x.Expected     (p,e)   = ()
@@ -587,8 +583,9 @@ module internal Details =
 open Details
 
 let tryParse (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let sb = StringBuilder 16
   consume_WhiteSpace s &pos
-  && tryParse_RootValue v s &pos
+  && tryParse_RootValue sb v s &pos
   && tryParse_Eos v s &pos
 
 type ParseResult =
