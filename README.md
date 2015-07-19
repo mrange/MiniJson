@@ -1,6 +1,6 @@
 # MiniJson
 
-MiniJson is a conforming JSON parser licensed under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+MiniJson is a conforming JSON parser for F# licensed under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
 MiniJson has decent performance (comparable to commonly used [Json.NET](http://www.newtonsoft.com/json))
 and provides decent error messages (possible to suppress if performance is of importance).
