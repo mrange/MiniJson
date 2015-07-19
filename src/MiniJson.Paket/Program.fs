@@ -29,8 +29,8 @@ let main argv =
 
     for i = 0 to root.Length - 1 do
       let v     = root.[i]
-      let id    = (v.Get ("id")).AsString
-      let name  = (v.Get ("name")).AsString
-      let age   = (v.Get ("age")).AsFloat
+      let id    = v?id.AsString
+      let name  = v?name.AsString
+      let age   = v?age.AsFloat
       printfn "Record - %d: id:%s, name:%s, age:%f" i id name age
   0
