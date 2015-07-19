@@ -19,7 +19,7 @@ open System.Reflection
 open System.Runtime.CompilerServices
 open System.Runtime.InteropServices
 
-[<assembly: AssemblyDescription("MiniJson is a Json library licensed under Apache License, Version 2.0")>]
+[<assembly: AssemblyDescription("MiniJson is a conforming Json library licensed under Apache License, Version 2.0")>]
 [<assembly: AssemblyConfiguration("")>]
 [<assembly: AssemblyCompany("")>]
 [<assembly: AssemblyProduct("MiniJson")>]
@@ -29,7 +29,7 @@ open System.Runtime.InteropServices
 
 [<assembly: ComVisible(false)>]
 
-[<assembly: AssemblyVersion("1.0.0.0")>]
-[<assembly: AssemblyFileVersion("1.0.0.0")>]
+[<assembly: AssemblyVersion("2.0.0.0")>]
+[<assembly: AssemblyFileVersion("2.0.0.0")>]
 do
     ()

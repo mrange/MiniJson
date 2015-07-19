@@ -14,7 +14,7 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
 
-/// MiniJson aims to be a minimal yet compliant JSON parser with reasonable performance and decent error reporting
+/// MiniJson aims to be a minimal yet conforming JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
 #if PUBLIC_MINIJSON
@@ -134,7 +134,7 @@ type Json =
 let toString doIndent (json : Json) : string =
   json.ToString doIndent
 
-type ParseVisitor =
+type IParseVisitor =
   interface
     abstract NullValue    : unit        -> bool
     abstract BoolValue    : bool        -> bool
@@ -150,7 +150,7 @@ type ParseVisitor =
     abstract Unexpected   : int*string  -> unit
   end
 
-module Details =
+module internal Details =
 
   [<Literal>]
   let token_Null  = "null"
@@ -169,13 +169,13 @@ module Details =
   let inline ch   (s : string) (pos : int) : char = s.[pos]
   let inline adv  (p : byref<int>)                = p <- p + 1
 
-  let inline raiseEos (v : ParseVisitor) (pos : int) : bool =
+  let inline raiseEos (v : IParseVisitor) (pos : int) : bool =
     v.Unexpected (pos, "EOS")
     false
 
   let inline pow n = pown 10.0 n
 
-  let raiseValue (v : ParseVisitor) (pos : int) : bool =
+  let raiseValue (v : IParseVisitor) (pos : int) : bool =
     v.Expected      (pos, "null"  )
     v.Expected      (pos, "true"  )
     v.Expected      (pos, "false" )
@@ -186,7 +186,7 @@ module Details =
     v.Expected      (pos, "digit" )
     false
 
-  let raiseRoot (v : ParseVisitor) (pos : int) : bool =
+  let raiseRoot (v : IParseVisitor) (pos : int) : bool =
     v.ExpectedChar  (pos, '{'     )
     v.ExpectedChar  (pos, '['     )
     false
@@ -236,7 +236,7 @@ module Details =
     neos s pos
     && ch s pos = c
 
-  let inline tryConsume_Char (c : char) (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let inline tryConsume_Char (c : char) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     elif (ch s pos) = c then
       adv &pos
@@ -245,7 +245,7 @@ module Details =
       v.ExpectedChar (pos, c)
       false
 
-  let inline tryParse_AnyOf (cs : char []) (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<char>): bool =
+  let inline tryParse_AnyOf (cs : char []) (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<char>): bool =
     if eos s pos then raiseEos v pos
     else
       let c = ch s pos
@@ -276,25 +276,25 @@ module Details =
     else
       false
 
-  let tryParse_Null (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_Null (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if tryConsume_Token token_Null s &pos then
       v.NullValue ()
     else
       raiseValue v pos
 
-  let tryParse_True (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_True (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if tryConsume_Token token_True s &pos then
       v.BoolValue true
     else
       raiseValue v pos
 
-  let tryParse_False (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_False (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if tryConsume_Token token_False s &pos then
       v.BoolValue false
     else
       raiseValue v pos
 
-  let rec tryParse_UInt (first : bool) (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+  let rec tryParse_UInt (first : bool) (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     let z = float '0'
     if eos s pos then ignore <| raiseEos v pos; not first
     else
@@ -307,7 +307,7 @@ module Details =
         v.Expected (pos, "digit")
         not first
 
-  let tryParse_UInt0 (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+  let tryParse_UInt0 (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     // tryParse_UInt0 only consumes 0 if input is 0123, this in order to be conformant with spec
     let zero          = tryConsume_Char '0' v s &pos
 
@@ -317,7 +317,7 @@ module Details =
     else
       tryParse_UInt true v s &pos &r
 
-  let tryParse_Fraction (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+  let tryParse_Fraction (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     if tryConsume_Char '.' v s &pos then
       let spos        = pos
       let mutable uf  = 0.
@@ -329,7 +329,7 @@ module Details =
     else
       true  // Fraction is optional
 
-  let tryParse_Exponent (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
+  let tryParse_Exponent (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
     let mutable exp = ' '
     if tryParse_AnyOf [|'e';'E'|] v s &pos &exp then
       let mutable sign = '+'
@@ -347,7 +347,7 @@ module Details =
     else
       true  // Fraction is optional
 
-  let tryParse_Number (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_Number (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     let hasSign       = tryConsume_Char '-' v s &pos
     let inline sign v = if hasSign then -v else v
 
@@ -365,7 +365,7 @@ module Details =
     else
       false
 
-  let rec tryParse_UnicodeChar (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) (n : int) (r : int) : bool =
+  let rec tryParse_UnicodeChar (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) (n : int) (r : int) : bool =
     if n = 0 then
       ignore <| sb.Append (char r)
       true
@@ -380,7 +380,7 @@ module Details =
         v.Expected (pos, "hexdigit")
         false
 
-  let rec tryParse_Chars (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let rec tryParse_Chars (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     let inline app (c : char) = ignore <| sb.Append c
 
     if eos s pos then raiseEos v pos
@@ -424,31 +424,31 @@ module Details =
         app c
         tryParse_Chars sb v s &pos
 
-  let tryParse_ToStringBuilder (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_ToStringBuilder (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     ignore <| sb.Clear ()
     tryConsume_Char           '"' v s &pos
     && tryParse_Chars      sb     v s &pos
     && tryConsume_Char        '"' v s &pos
 
-  let tryParse_String (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_String (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     // TODO: Reuse StringBuilder
     let sb = StringBuilder ()
     tryParse_ToStringBuilder sb v s &pos
     && v.StringValue (sb.ToString ())
 
-  let tryParse_MemberKey (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_MemberKey (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     // TODO: Reuse StringBuilder
     let sb = StringBuilder ()
     tryParse_ToStringBuilder sb v s &pos
     && v.MemberKey (sb.ToString ())
 
-  let inline tryConsume_Delimiter first (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let inline tryConsume_Delimiter first (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if first then true
     else
       tryConsume_Char         ',' v s &pos
       && consume_WhiteSpace         s &pos
 
-  let rec tryParse_ArrayValues first (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let rec tryParse_ArrayValues first (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if test_Char ']' s pos then
       true
     else
@@ -456,7 +456,7 @@ module Details =
       && tryParse_Value             v s &pos
       && tryParse_ArrayValues false v s &pos
 
-  and tryParse_Array (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_Array (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryConsume_Char           '[' v s &pos
     && consume_WhiteSpace           s &pos
     && v.ArrayBegin ()
@@ -464,7 +464,7 @@ module Details =
     && tryConsume_Char        ']' v s &pos
     && v.ArrayEnd ()
 
-  and tryParse_ObjectMembers first (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_ObjectMembers first (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if test_Char '}' s pos then
       true
     else
@@ -476,7 +476,7 @@ module Details =
       && tryParse_Value               v s &pos
       && tryParse_ObjectMembers false v s &pos
 
-  and tryParse_Object (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_Object (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryConsume_Char               '{' v s &pos
     && consume_WhiteSpace               s &pos
     && v.ObjectBegin ()
@@ -484,7 +484,7 @@ module Details =
     && tryConsume_Char            '}' v s &pos
     && v.ObjectEnd ()
 
-  and tryParse_Value (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_Value (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     else
       let result =
@@ -499,7 +499,7 @@ module Details =
         | c when isDigit c    -> tryParse_Number  v s &pos
         | _                   -> raiseValue v pos
       result && consume_WhiteSpace s &pos
-  let tryParse_RootValue (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_RootValue (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     else
       let result =
@@ -509,15 +509,10 @@ module Details =
         | _                   -> raiseRoot v pos
       result && consume_WhiteSpace s &pos
 
-  let tryParse_Eos (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_Eos (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if neos s pos then v.Expected (pos, "EOS"); false
     else
       true
-
-  let tryParse (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    consume_WhiteSpace s &pos
-    && tryParse_RootValue v s &pos
-    && tryParse_Eos v s &pos
 
   [<NoEquality>]
   [<NoComparison>]
@@ -561,7 +556,7 @@ module Details =
 
     let defaultSize = 4
 
-    interface ParseVisitor with
+    interface IParseVisitor with
       override x.NullValue    ()      = add <| JsonNull
       override x.BoolValue    v       = add <| JsonBoolean v
       override x.NumberValue  v       = add <| JsonNumber v
@@ -591,7 +586,7 @@ module Details =
 
     let filter f      = f |> Seq.sort |> Seq.distinct |> Seq.toArray
 
-    interface ParseVisitor with
+    interface IParseVisitor with
       override x.NullValue    ()      = true
       override x.BoolValue    v       = true
       override x.NumberValue  v       = true
@@ -611,24 +606,31 @@ module Details =
     member x.Expected       = filter expected
     member x.Unexpected     = filter unexpected
 
+open Details
+
+let tryParse (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+  consume_WhiteSpace s &pos
+  && tryParse_RootValue v s &pos
+  && tryParse_Eos v s &pos
+
 type ParseResult =
   | Success of Json
   | Failure of string*int
 
 let parse (fullErrorInfo : bool) (s : string) : ParseResult =
   let mutable pos = 0
-  let v           = Details.JsonParseVisitor ()
+  let v           = JsonParseVisitor ()
 
-  match Details.tryParse (upcast v) s &pos, fullErrorInfo with
+  match tryParse (upcast v) s &pos, fullErrorInfo with
   | true  , _     ->
     Success (v.Root ())
   | false , false ->
-    Failure (Details.error_Prelude, pos)
+    Failure (error_Prelude, pos)
   | false , true  ->
     let mutable epos  = 0
-    let ev            = Details.JsonErrorParseVisitor (pos)
+    let ev            = JsonErrorParseVisitor (pos)
 
-    ignore <| Details.tryParse (upcast ev) s &epos
+    ignore <| tryParse (upcast ev) s &epos
 
     let sb = StringBuilder ()
     let inline str  (s : string)  = ignore <| sb.Append s
@@ -671,7 +673,7 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
         let ap  = pos - ab
         ab, ae, ap
 
-    strl Details.error_Prelude
+    strl error_Prelude
     for i = windowBegin to windowEnd do
       let c =
         match s.[i] with
