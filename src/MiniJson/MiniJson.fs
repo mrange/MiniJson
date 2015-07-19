@@ -30,11 +30,32 @@ module Internal.MiniJson.JsonModule
 module internal Internal.MiniJson.JsonModule
 #endif
 #endif
-open System
 open System.Collections.Generic
 open System.Diagnostics
 open System.Globalization
 open System.Text
+
+module internal Tokens =
+  [<Literal>]
+  let Null      = "null"
+
+  [<Literal>]
+  let True      = "true"
+
+  [<Literal>]
+  let False     = "false"
+
+  [<Literal>]
+  let Digit     = "digit"
+
+  [<Literal>]
+  let HexDigit  = "hexdigit"
+
+  [<Literal>]
+  let EOS       = "EOS"
+
+  [<Literal>]
+  let NewLine   = "NEWLINE"
 
 type Json =
   | JsonNull
@@ -99,9 +120,9 @@ type Json =
 
     let rec impl j =
       match j with
-      | JsonNull          -> str "null"
-      | JsonBoolean true  -> str "true"
-      | JsonBoolean false -> str "false"
+      | JsonNull          -> str Tokens.Null
+      | JsonBoolean true  -> str Tokens.True
+      | JsonBoolean false -> str Tokens.False
       | JsonNumber n      -> num n
       | JsonString s      -> estr s
       | JsonArray vs      -> values '[' ']' vs impl
@@ -153,15 +174,6 @@ type IParseVisitor =
 module internal Details =
 
   [<Literal>]
-  let token_Null  = "null"
-
-  [<Literal>]
-  let token_True  = "true"
-
-  [<Literal>]
-  let token_False = "false"
-
-  [<Literal>]
   let error_Prelude = "Failed to parse input as JSON"
 
   let inline neos (s : string) (pos : int) : bool = pos < s.Length
@@ -170,25 +182,26 @@ module internal Details =
   let inline adv  (p : byref<int>)                = p <- p + 1
 
   let inline raiseEos (v : IParseVisitor) (pos : int) : bool =
-    v.Unexpected (pos, "EOS")
+    v.Unexpected (pos, Tokens.EOS)
     false
 
   let inline pow n = pown 10.0 n
 
+  let expectedChars (v : IParseVisitor) (p : int) (chars : string) : unit =
+    let e = chars.Length - 1
+    for i = 0 to e do
+      v.ExpectedChar (p, chars.[i])
+
   let raiseValue (v : IParseVisitor) (pos : int) : bool =
-    v.Expected      (pos, "null"  )
-    v.Expected      (pos, "true"  )
-    v.Expected      (pos, "false" )
-    v.ExpectedChar  (pos, '"'     )
-    v.ExpectedChar  (pos, '{'     )
-    v.ExpectedChar  (pos, '['     )
-    v.ExpectedChar  (pos, '-'     )
-    v.Expected      (pos, "digit" )
+    v.Expected      (pos, Tokens.Null )
+    v.Expected      (pos, Tokens.True )
+    v.Expected      (pos, Tokens.False)
+    v.Expected      (pos, Tokens.Digit)
+    expectedChars v pos "\"{[-"
     false
 
   let raiseRoot (v : IParseVisitor) (pos : int) : bool =
-    v.ExpectedChar  (pos, '{'     )
-    v.ExpectedChar  (pos, '['     )
+    expectedChars v pos "{["
     false
 
   let inline isWhiteSpace (c : char) : bool =
@@ -206,31 +219,7 @@ module internal Details =
     true
 
   let inline isDigit (c : char) : bool =
-    match c with
-    | '0'
-    | '1'
-    | '2'
-    | '3'
-    | '4'
-    | '5'
-    | '6'
-    | '7'
-    | '8'
-    | '9' -> true
-    | _   -> false
-
-  let inline isDigit19 (c : char) : bool =
-    match c with
-    | '1'
-    | '2'
-    | '3'
-    | '4'
-    | '5'
-    | '6'
-    | '7'
-    | '8'
-    | '9' -> true
-    | _   -> false
+    c >= '0' && c <= '9'
 
   let inline test_Char (c : char) (s : string) (pos : int) : bool =
     neos s pos
@@ -260,36 +249,33 @@ module internal Details =
 
   let inline tryConsume_Token (tk : string) (s : string) (pos : byref<int>) : bool =
     let tkl = tk.Length
-    if pos + tkl <= s.Length then
-      let spos = pos
-      let mutable tpos = 0
+    let spos = pos
+    let mutable tpos = 0
 
-      while tpos < tkl && tk.[tpos] = s.[pos] do
-        adv &tpos
-        adv &pos
+    while tpos < tkl && tk.[tpos] = s.[pos] do
+      adv &tpos
+      adv &pos
 
-      if tpos = tkl then true
-      else
-        // To support error reporting, move back on failure
-        pos <- spos
-        false
+    if tpos = tkl then true
     else
+      // To support error reporting, move back on failure
+      pos <- spos
       false
 
   let tryParse_Null (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if tryConsume_Token token_Null s &pos then
+    if tryConsume_Token Tokens.Null s &pos then
       v.NullValue ()
     else
       raiseValue v pos
 
   let tryParse_True (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if tryConsume_Token token_True s &pos then
+    if tryConsume_Token Tokens.True s &pos then
       v.BoolValue true
     else
       raiseValue v pos
 
   let tryParse_False (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if tryConsume_Token token_False s &pos then
+    if tryConsume_Token Tokens.False s &pos then
       v.BoolValue false
     else
       raiseValue v pos
@@ -304,7 +290,7 @@ module internal Details =
         r <- 10.0*r + (float c - z)
         tryParse_UInt false v s &pos &r
       else
-        v.Expected (pos, "digit")
+        v.Expected (pos, Tokens.Digit)
         not first
 
   let tryParse_UInt0 (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
@@ -377,7 +363,7 @@ module internal Details =
       elif  c >= 'A' && c <= 'F'  then adv &pos ; tryParse_UnicodeChar sb v s &pos (n - 1) (sr + (int c - int 'A' + 10))
       elif  c >= 'a' && c <= 'f'  then adv &pos ; tryParse_UnicodeChar sb v s &pos (n - 1) (sr + (int c - int 'a' + 10))
       else
-        v.Expected (pos, "hexdigit")
+        v.Expected (pos, Tokens.HexDigit)
         false
 
   let rec tryParse_Chars (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
@@ -388,7 +374,7 @@ module internal Details =
       let c = ch s pos
       match c with
       | '"'         -> true
-      | '\r' | '\n' -> v.Unexpected (pos, "NEWLINE"); false
+      | '\r' | '\n' -> v.Unexpected (pos, Tokens.NewLine); false
       | '\\'        ->
         adv &pos
         if eos s pos then raiseEos v pos
@@ -408,15 +394,7 @@ module internal Details =
               adv &pos
               tryParse_UnicodeChar sb v s &pos 4 0
             | _ ->
-              v.ExpectedChar (pos, '"' )
-              v.ExpectedChar (pos, '\\')
-              v.ExpectedChar (pos, '/' )
-              v.ExpectedChar (pos, 'b' )
-              v.ExpectedChar (pos, 'f' )
-              v.ExpectedChar (pos, 'n' )
-              v.ExpectedChar (pos, 'r' )
-              v.ExpectedChar (pos, 't' )
-              v.ExpectedChar (pos, 'u' )
+              expectedChars v pos "\"\\/bfnrtu"
               false
           result && tryParse_Chars sb v s &pos
       | _           ->
@@ -510,7 +488,7 @@ module internal Details =
       result && consume_WhiteSpace s &pos
 
   let tryParse_Eos (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if neos s pos then v.Expected (pos, "EOS"); false
+    if neos s pos then v.Expected (pos, Tokens.EOS); false
     else
       true
 
