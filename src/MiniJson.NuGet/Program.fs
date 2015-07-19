@@ -16,8 +16,6 @@
 open MiniJson.JsonModule
 open MiniJson.DynamicJsonModule
 
-// TODO: Switch to NuGet when MiniJson is available
-
 [<EntryPoint>]
 let main argv =
   let jsonText = """[{"id":"123", "name":"Mr. Big", "age":30}, {"id":"123", "name":"Mr. X"}]"""
