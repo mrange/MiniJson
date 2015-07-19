@@ -56,4 +56,7 @@ let test_eq e a nm    =
   else
     errorf "TEST_EQ: %A = %A (%s)" e a nm
     false
+
+let check_eq e a nm   = ignore <| test_eq e a nm
+
 // ----------------------------------------------------------------------------------------------

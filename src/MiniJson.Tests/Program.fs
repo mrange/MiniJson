@@ -23,6 +23,7 @@ open System.Text
 
 open MiniJson
 open MiniJson.JsonModule
+open MiniJson.DynamicJsonModule
 open MiniJson.Tests.Test
 open MiniJson.Tests.TestCases
 // ----------------------------------------------------------------------------------------------
@@ -138,11 +139,11 @@ let compareParsers
 
   match expected, actual with
   | Success e     , Success a     ->
-    ignore <| test_eq true  positive  name
+    check_eq true  positive  name
     if test_eq e a testCase then postProcess e a
   | Failure (_,e) , Failure (_,a) ->
-    ignore <| test_eq false positive  name
-    ignore <| test_eq e     a         name
+    check_eq false positive  name
+    check_eq e     a         name
   | _             , _             ->
     test_failuref "Parsing mismatch '%s', expected:%A, actual: %A" name expected actual
 // ----------------------------------------------------------------------------------------------
@@ -259,7 +260,7 @@ let runPerformanceTestCases
     let reference , _ = timeIt iterations (fun _ -> referenceParser testCase)
     let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
 
-    ignore <| test_eq true (reference > actual) name
+    check_eq true (reference > actual) name
 
     dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
 // ----------------------------------------------------------------------------------------------
@@ -309,7 +310,158 @@ let errorReportingTestCases (dumper : string -> unit) =
     match parse true testCase with
     | Success v           -> test_failuref "Parsing expected to fail for '%s' : %A" name v
     | Failure (actual, _)  ->
-      ignore <| test_eq expected actual name
+      check_eq expected actual name
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let toStringTestCases (dumper : string -> unit) =
+  let testCases = Array.zip3 positiveTestCases noIndentOracles withIndentOracles
+
+  infof "Running %d toString testcases..." testCases.Length
+
+  for (positive, name, testCase), noIndentOracle ,withIndentOracle in testCases do
+    dumper "---==> TO STRING <==---"
+    dumper name
+    dumper (if positive then "positive" else "negative")
+    dumper testCase
+    match parse false testCase with
+    | Success v       ->
+      check_eq noIndentOracle   (v.ToString ()    ) name
+      check_eq noIndentOracle   (toString false v ) name
+      check_eq withIndentOracle (toString true v  ) name
+
+    | Failure (_, _)  ->
+      test_failuref "Parsing expected to succeed for '%s'" name
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let pathTestCases (dumper : string -> unit) =
+  infof "Running Dynamic JSON testcases..."
+
+  let test_scalar e a =
+    match e,a with
+    | ScalarNull        _     , ScalarNull        _                 -> true
+    | ScalarBoolean     (_,a) , ScalarBoolean     (_,b) when a = b  -> true
+    | ScalarNumber      (_,a) , ScalarNumber      (_,b) when a = b  -> true
+    | ScalarString      (_,a) , ScalarString      (_,b) when a = b  -> true
+    | ScalarNotScalar   _     , ScalarNotScalar   _                 -> true
+    | ScalarInvalidPath _     , ScalarInvalidPath _                 -> true
+    | _                       , _                                   ->
+      errorf "TEST_SCALAR: %A equiv %A" e a
+      false
+
+  let check_scalar e a = ignore <| test_scalar e a
+
+  let jsonArray =
+    JsonArray
+      [|
+        JsonNull
+        JsonBoolean true
+        JsonNumber  0.
+        JsonString  "Hello"
+      |]
+
+  let jsonObject =
+    JsonObject
+      [|
+        "Null"    , JsonNull
+        "Boolean" , JsonBoolean false
+        "Number"  , JsonNumber  123.
+        "String"  , JsonString  "There"
+        "Array"   , jsonArray
+      |]
+
+  let rootObject =
+    JsonObject
+      [|
+        "Object"    , jsonObject
+        "Array"     , jsonArray
+      |]
+
+
+  let defaultPath       = JsonNull, []
+  let defaultNull       = ScalarNull defaultPath
+  let defaultBoolean  v = ScalarBoolean (defaultPath, v)
+  let defaultNumber   v = ScalarNumber  (defaultPath, v)
+  let defaultString   v = ScalarString  (defaultPath, v)
+
+  let path = rootObject.Query
+
+  check_scalar (defaultNull           ) (!!path?Object?Null         )
+  check_scalar (defaultBoolean false  ) (!!path?Object?Boolean      )
+  check_scalar (defaultNumber  123.   ) (!!path?Object?Number       )
+  check_scalar (defaultString  "There") (!!path?Object?String       )
+
+  check_scalar (defaultNull           ) (!!path?Object?Array    .[0])
+  check_scalar (defaultBoolean true   ) (!!path?Object?Array    .[1])
+  check_scalar (defaultNumber  0.     ) (!!path?Object?Array    .[2])
+  check_scalar (defaultString  "Hello") (!!path?Object?Array    .[3])
+
+  check_scalar (defaultNull           ) (!!path?Array .[0]          )
+  check_scalar (defaultBoolean true   ) (!!path?Array .[1]          )
+  check_scalar (defaultNumber  0.     ) (!!path?Array .[2]          )
+  check_scalar (defaultString  "Hello") (!!path?Array .[3]          )
+
+  check_eq false    path                .HasValue "HasValue: path"
+  check_eq false    path?Object?Null    .HasValue "HasValue: path?Object?Null"
+  check_eq true     path?Object?Boolean .HasValue "HasValue: path?Object?Boolean"
+  check_eq true     path?Object?Number  .HasValue "HasValue: path?Object?Number"
+  check_eq true     path?Object?String  .HasValue "HasValue: path?Object?String"
+  check_eq false    path?Object?Invalid .HasValue "HasValue: path?Object?Invalid"
+  check_eq false    path?Missing?Invalid.HasValue "HasValue: path?Missing?Invalid"
+
+  check_eq false    path                .AsBool   "AsBool: path"
+  check_eq false    path?Object?Null    .AsBool   "AsBool: path?Object?Null"
+  check_eq false    path?Object?Boolean .AsBool   "AsBool: path?Object?Boolean"
+  check_eq true     path?Object?Number  .AsBool   "AsBool: path?Object?Number"
+  check_eq true     path?Object?String  .AsBool   "AsBool: path?Object?String"
+  check_eq false    path?Object?Invalid .AsBool   "AsBool: path?Object?Invalid"
+  check_eq false    path?Missing?Invalid.AsBool   "AsBool: path?Missing?Invalid"
+
+  check_eq 0.       path                .AsFloat  "AsFloat: path"
+  check_eq 0.       path?Object?Null    .AsFloat  "AsFloat: path?Object?Null"
+  check_eq 0.       path?Object?Boolean .AsFloat  "AsFloat: path?Object?Boolean"
+  check_eq 123.     path?Object?Number  .AsFloat  "AsFloat: path?Object?Number"
+  check_eq 0.       path?Object?String  .AsFloat  "AsFloat: path?Object?String"
+  check_eq 0.       path?Object?Invalid .AsFloat  "AsFloat: path?Object?Invalid"
+  check_eq 0.       path?Missing?Invalid.AsFloat  "AsFloat: path?Missing?Invalid"
+
+  check_eq ""       path                .AsString "AsString: path"
+  check_eq ""       path?Object?Null    .AsString "AsString: path?Object?Null"
+  check_eq "false"  path?Object?Boolean .AsString "AsString: path?Object?Boolean"
+  check_eq "123"    path?Object?Number  .AsString "AsString: path?Object?Number"
+  check_eq "There"  path?Object?String  .AsString "AsString: path?Object?String"
+  check_eq ""       path?Object?Invalid .AsString "AsString: path?Object?Invalid"
+  check_eq ""       path?Missing?Invalid.AsString "AsString: path?Missing?Invalid"
+
+  let eRoot         = "NotScalar: root"
+  let eInvalid      = "InvalidPath: root.Object!Invalid"
+  let eMissing      = "InvalidPath: root!Missing!Invalid"
+
+  check_eq eRoot    path                  .AsExpandedString     "AsExpandedString: path"
+  check_eq "null"   path?Object?Null      .AsExpandedString     "AsExpandedString: path?Object?Null"
+  check_eq "false"  path?Object?Boolean   .AsExpandedString     "AsExpandedString: path?Object?Boolean"
+  check_eq "123"    path?Object?Number    .AsExpandedString     "AsExpandedString: path?Object?Number"
+  check_eq "There"  path?Object?String    .AsExpandedString     "AsExpandedString: path?Object?String"
+  check_eq eInvalid path?Object?Invalid   .AsExpandedString     "AsExpandedString: path?Object?Invalid"
+  check_eq eMissing path?Missing?Invalid  .AsExpandedString     "AsExpandedString: path?Missing?Invalid"
+
+  check_eq -1.      (path                 .ConvertToFloat -1.)  "ConvertToFloat: path"
+  check_eq 0.       (path?Object?Null     .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Null"
+  check_eq 0.       (path?Object?Boolean  .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Boolean"
+  check_eq 123.     (path?Object?Number   .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Number"
+  check_eq -1.      (path?Object?String   .ConvertToFloat -1.)  "ConvertToFloat: path?Object?String"
+  check_eq -1.      (path?Object?Invalid  .ConvertToFloat -1.)  "ConvertToFloat: path?Object?Invalid"
+  check_eq -1.      (path?Missing?Invalid .ConvertToFloat -1.)  "ConvertToFloat: path?Missing?Invalid"
+
+
+  let eLongPath = "InvalidPath: root.Object.Array.[0]!Invalid![100]!Missing"
+  let aLongPath = path?Object?Array.[0]?Invalid.[100]?Missing.AsExpandedString
+
+  check_eq eLongPath aLongPath "Long path"
+
+// ----------------------------------------------------------------------------------------------
+
 // ----------------------------------------------------------------------------------------------
 [<EntryPoint>]
 let main argv =
@@ -325,9 +477,11 @@ let main argv =
     let dumper (s : string) = dump.WriteLine s
 #endif
 
+    pathTestCases               dumper
+
     functionalTestCases         dumper
     functionalJsonNetTestCases  dumper
-//  TODO: Figure out a good way to test error strings
+    toStringTestCases           dumper
     errorReportingTestCases     dumper
 #if !DEBUG
     performanceTestCases        dumper
