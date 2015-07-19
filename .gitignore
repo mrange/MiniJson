@@ -7,7 +7,7 @@
 *.sln.docstates
 
 packages/
-
+*.nupkg
 
 # Build results
 [Dd]ebug/

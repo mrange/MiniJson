@@ -1,6 +1,9 @@
 # MiniJson
 
-Minimal conforming JSON parser for F#
+MiniJson is a conforming JSON parser licensed under [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
+
+MiniJson has decent performance (comparable to commonly used [Json.NET](http://www.newtonsoft.com/json))
+and provides decent error messages (possible to suppress if performance is of importance).
 
 The best way of referencing MiniJson is to use [Paket](http://www.nuget.org/packages/Paket/)
 [http references](http://fsprojects.github.io/Paket/http-dependencies.html)
@@ -10,24 +13,15 @@ The best way of referencing MiniJson is to use [Paket](http://www.nuget.org/pack
 http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.fs
 ```
 
-Using MiniJson is straight-forward
+Other than [NuGet](http://www.nuget.org/packages/MiniJson/) can also be used to reference MiniJson
 
+To install MiniJson, run the following command in the [Package Manager Console](http://docs.nuget.org/consume/package-manager-console)
+```
+PM> Install-Package MiniJson
+```
+
+Using MiniJson is straight-forward
 ```fsharp
-// ----------------------------------------------------------------------------------------------
-// Copyright 2015 Mårten Rånge
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-// ----------------------------------------------------------------------------------------------
 open Internal.MiniJson.JsonModule
 open Internal.MiniJson.DynamicJsonModule
 
@@ -53,5 +47,6 @@ let main argv =
 
 # TODO
 
-1. Publish nuget package
+1. Reduce MiniJson platform requirements
+1. Improve MiniJson doc
 1. Improve README.md
