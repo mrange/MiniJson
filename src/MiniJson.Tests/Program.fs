@@ -302,7 +302,7 @@ let performanceJsonNetTestCases (dumper : string -> unit) =
     "PERFORMANCE TEST (JSON.NET)"
     MiniJson.Tests.JsonNet.parse
     1000
-    1.
+    1.0
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -344,6 +344,24 @@ let toStringTestCases (dumper : string -> unit) =
     | Failure (_, _)  ->
       test_failuref "Parsing expected to succeed for '%s'" name
 // ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let scalarToStringTestCases (dumper : string -> unit) =
+  infof "Running Scalar ToString testcases..."
+
+  // Tests that toString on scalar values (like null) generate valid JSON documents
+
+  let testCases =
+    [|
+      JsonNull            , """[null]"""
+      JsonBoolean false   , """[false]"""
+      JsonBoolean true    , """[true]"""
+      JsonNumber  123.    , """[123]"""
+      JsonString  "Hello" , """["Hello"]"""
+    |]
+
+  for testCase, expected in testCases do
+    check_eq expected (toString false testCase) expected
 
 // ----------------------------------------------------------------------------------------------
 let pathTestCases (dumper : string -> unit) =
@@ -492,6 +510,7 @@ let main argv =
     functionalJsonNetTestCases  dumper
     toStringTestCases           dumper
     errorReportingTestCases     dumper
+    scalarToStringTestCases     dumper
     pathTestCases               dumper
 #if !DEBUG
     performanceTestCases        dumper
