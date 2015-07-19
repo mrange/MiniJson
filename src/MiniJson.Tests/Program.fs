@@ -302,7 +302,7 @@ let performanceJsonNetTestCases (dumper : string -> unit) =
     "PERFORMANCE TEST (JSON.NET)"
     MiniJson.Tests.JsonNet.parse
     1000
-    0.9 // In general MiniJson performs favorable to Json.NET but topic.json is close to 1.
+    1.
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------

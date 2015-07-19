@@ -172,9 +172,11 @@ type IParseVisitor =
   end
 
 module internal Details =
+  [<Literal>]
+  let DefaultSize = 16
 
   [<Literal>]
-  let error_Prelude = "Failed to parse input as JSON"
+  let ErrorPrelude = "Failed to parse input as JSON"
 
   let inline neos (s : string) (pos : int) : bool = pos < s.Length
   let inline eos  (s : string) (pos : int) : bool = pos >= s.Length
@@ -499,17 +501,39 @@ module internal Details =
   [<NoEquality>]
   [<NoComparison>]
   type JsonParseVisitor() =
-    let context       = Stack<JsonBuilder> ()
+    let context             = Stack<JsonBuilder> (DefaultSize)
+    let freeObjectBuilders  = Stack<JsonBuilder> (DefaultSize)
+    let freeArrayBuilders   = Stack<JsonBuilder> (DefaultSize)
 
-    let push v        =
-      context.Push v
+    let pushObject ()        =
+      if freeObjectBuilders.Count > 0 then
+        context.Push (freeObjectBuilders.Pop ())
+      else
+        context.Push (BuilderObject <| (ref System.String.Empty, ResizeArray<_>(DefaultSize)))
+      true
+
+    let pushArray ()        =
+      if freeArrayBuilders.Count > 0 then
+        context.Push (freeArrayBuilders.Pop ())
+      else
+        context.Push (BuilderArray <| ResizeArray<_>(DefaultSize))
       true
 
     let pop ()        =
-      match context.Pop () with
+      let v = context.Pop ()
+      match v with
       | BuilderRoot   vr      -> !vr
-      | BuilderObject (_,ms)  -> JsonObject (ms.ToArray ())
-      | BuilderArray  vs      -> JsonArray (vs.ToArray ())
+      | BuilderObject (rk,ms)  ->
+        let result  = JsonObject (ms.ToArray ())
+        rk := System.String.Empty
+        ms.Clear ()
+        freeObjectBuilders.Push v
+        result
+      | BuilderArray  vs      ->
+        let result  = JsonArray (vs.ToArray ())
+        vs.Clear ()
+        freeArrayBuilders.Push v
+        result
 
     let setKey k      =
       match context.Peek () with
@@ -528,17 +552,15 @@ module internal Details =
     do
       context.Push <| (BuilderRoot <| ref JsonNull)
 
-    let defaultSize = 4
-
     interface IParseVisitor with
       override x.NullValue    ()      = add <| JsonNull
       override x.BoolValue    v       = add <| JsonBoolean v
       override x.NumberValue  v       = add <| JsonNumber v
       override x.StringValue  v       = add <| JsonString (v.ToString ())
 
-      override x.ArrayBegin   ()      = push (BuilderArray <| ResizeArray<_>(defaultSize))
+      override x.ArrayBegin   ()      = pushArray ()
       override x.ArrayEnd     ()      = add <| pop ()
-      override x.ObjectBegin  ()      = push (BuilderObject <| (ref "", ResizeArray<_>(defaultSize)))
+      override x.ObjectBegin  ()      = pushObject ()
       override x.ObjectEnd    ()      = add <| pop ()
       override x.MemberKey    v       = setKey <| v.ToString ()
 
@@ -554,9 +576,9 @@ module internal Details =
   [<NoEquality>]
   [<NoComparison>]
   type JsonErrorParseVisitor(epos : int) =
-    let expectedChars = ResizeArray<char> ()
-    let expected      = ResizeArray<string> ()
-    let unexpected    = ResizeArray<string> ()
+    let expectedChars = ResizeArray<char>   (DefaultSize)
+    let expected      = ResizeArray<string> (DefaultSize)
+    let unexpected    = ResizeArray<string> (DefaultSize)
 
     let filter f      = f |> Seq.sort |> Seq.distinct |> Seq.toArray
 
@@ -583,7 +605,7 @@ module internal Details =
 open Details
 
 let tryParse (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
-  let sb = StringBuilder 16
+  let sb = StringBuilder DefaultSize
   consume_WhiteSpace s &pos
   && tryParse_RootValue sb v s &pos
   && tryParse_Eos v s &pos
@@ -600,7 +622,7 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
   | true  , _     ->
     Success (v.Root ())
   | false , false ->
-    Failure (error_Prelude, pos)
+    Failure (ErrorPrelude, pos)
   | false , true  ->
     let mutable epos  = 0
     let ev            = JsonErrorParseVisitor (pos)
@@ -648,7 +670,7 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
         let ap  = pos - ab
         ab, ae, ap
 
-    strl error_Prelude
+    strl ErrorPrelude
     for i = windowBegin to windowEnd do
       let c =
         match s.[i] with
