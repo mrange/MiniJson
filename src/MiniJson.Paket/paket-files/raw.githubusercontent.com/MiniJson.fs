@@ -20,7 +20,15 @@
 #if PUBLIC_MINIJSON
 module MiniJson.JsonModule
 #else
+// Due to what seems to be an issue with the F# compiler preventing
+//  access to internal operator ? from within the same assembly
+//  define INTERNAL_MINIJSON_WORKAROUND to suppress internalizing of
+//  MiniJson.
+#if INTERNAL_MINIJSON_WORKAROUND
+module Internal.MiniJson.JsonModule
+#else
 module internal Internal.MiniJson.JsonModule
+#endif
 #endif
 open System
 open System.Collections.Generic
@@ -36,80 +44,95 @@ type Json =
   | JsonArray   of Json []
   | JsonObject  of (string*Json) []
 
-let toString (doIndent : bool) (json : Json) : string =
-  let sb = StringBuilder ()
+  member x.ToString (doIndent : bool) : string =
+    let sb = StringBuilder ()
 
-  let newline, indent, inc, dec =
-    let doNothing () = ()
-    if doIndent then
-      let current = ref 0
+    let newline, indent, inc, dec =
+      let doNothing () = ()
+      if doIndent then
+        let current = ref 0
 
-      let newline ()  = ignore <| sb.AppendLine ()
-      let indent ()   = ignore <| sb.Append (' ', !current)
-      let inc ()      = current := !current + 2
-      let dec ()      = current := !current - 2
+        let newline ()  = ignore <| sb.AppendLine ()
+        let indent ()   = ignore <| sb.Append (' ', !current)
+        let inc ()      = current := !current + 2
+        let dec ()      = current := !current - 2
 
-      newline, indent, inc, dec
-    else
-      doNothing, doNothing, doNothing, doNothing
+        newline, indent, inc, dec
+      else
+        doNothing, doNothing, doNothing, doNothing
 
-  let inline str (s : string)     = ignore <| sb.Append s
-  let inline ch  (c : char)       = ignore <| sb.Append c
-  let inline num (f : float)      = ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
+    let inline str (s : string)     = ignore <| sb.Append s
+    let inline ch  (c : char)       = ignore <| sb.Append c
+    let inline num (f : float)      = ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
 
-  let estr (s : string) =
-    ch '"'
-    let e = s.Length - 1
-    for i = 0 to e do
-      match s.[i] with
-      | '\"'  -> str @"\"""
-      | '\\'  -> str @"\\"
-      | '/'   -> str @"\/"
-      | '\b'  -> str @"\b"
-      | '\f'  -> str @"\f"
-      | '\n'  -> str @"\n"
-      | '\r'  -> str @"\r"
-      | '\t'  -> str @"\t"
-      | c     -> ch c
-    ch '"'
+    let estr (s : string) =
+      ch '"'
+      let e = s.Length - 1
+      for i = 0 to e do
+        match s.[i] with
+        | '\"'  -> str @"\"""
+        | '\\'  -> str @"\\"
+        | '/'   -> str @"\/"
+        | '\b'  -> str @"\b"
+        | '\f'  -> str @"\f"
+        | '\n'  -> str @"\n"
+        | '\r'  -> str @"\r"
+        | '\t'  -> str @"\t"
+        | c     -> ch c
+      ch '"'
 
-  let values b e (vs : 'T array) (a : 'T -> unit) =
-    ch b
-    newline ()
-    inc ()
-    let ee = vs.Length - 1
-    for i = 0 to ee do
-      let v = vs.[i]
-      indent ()
-      a v
-      if i < ee then
-        ch ','
+    let values b e (vs : 'T array) (a : 'T -> unit) =
+      ch b
       newline ()
-    dec ()
-    indent ()
-    ch e
+      inc ()
+      let ee = vs.Length - 1
+      for i = 0 to ee do
+        let v = vs.[i]
+        indent ()
+        a v
+        if i < ee then
+          ch ','
+        newline ()
+      dec ()
+      indent ()
+      ch e
 
-  let rec impl j =
-    match j with
-    | JsonNull          -> str "null"
-    | JsonBoolean true  -> str "true"
-    | JsonBoolean false -> str "false"
-    | JsonNumber n      -> num n
-    | JsonString s      -> estr s
-    | JsonArray vs      -> values '[' ']' vs impl
-    | JsonObject ms     -> values '{' '}' ms implkv
-  and implkv (k,v) =
-    estr k
-    ch ':'
-    newline ()
-    inc ()
-    indent ()
-    impl v
-    dec ()
+    let rec impl j =
+      match j with
+      | JsonNull          -> str "null"
+      | JsonBoolean true  -> str "true"
+      | JsonBoolean false -> str "false"
+      | JsonNumber n      -> num n
+      | JsonString s      -> estr s
+      | JsonArray vs      -> values '[' ']' vs impl
+      | JsonObject ms     -> values '{' '}' ms implkv
+    and implkv (k,v) =
+      estr k
+      ch ':'
+      newline ()
+      inc ()
+      indent ()
+      impl v
+      dec ()
 
-  impl json
+    let json =
+      match x with
+      | JsonNull
+      | JsonBoolean _
+      | JsonNumber  _
+      | JsonString  _ -> JsonArray [|x|]  // In order to be valid JSON
+      | JsonArray   _
+      | JsonObject  _ -> x
 
-  sb.ToString ()
+    impl json
+
+    sb.ToString ()
+
+  override x.ToString () : string =
+    x.ToString false
+
+let toString doIndent (json : Json) : string =
+  json.ToString doIndent
 
 type ParseVisitor =
   interface

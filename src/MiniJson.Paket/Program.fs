@@ -14,12 +14,23 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
 open Internal.MiniJson.JsonModule
+open Internal.MiniJson.DynamicJsonModule
 
 [<EntryPoint>]
 let main argv =
-  let jsonText = """{"Hello":"There"}"""
+  let jsonText = """[{"id":"123", "name":"Mr. Big", "age":30}, {"id":"123", "name":"Mr. X"}]"""
 
   match parse true jsonText with  // true for full error-info
-  | Success json        -> printfn "Success\n%s"    <| toString true json  // true to indent JSON
   | Failure (msg, pos)  -> printfn "Failure@%d\n%s" pos msg
+  | Success json        ->
+    printfn "Success\n%s" <| toString true json  // true to indent JSON
+
+    let root = json.Query
+
+    for i = 0 to root.Length - 1 do
+      let v     = root.[i]
+      let id    = (v.Get ("id")).AsString
+      let name  = (v.Get ("name")).AsString
+      let age   = (v.Get ("age")).AsFloat
+      printfn "Record - %d: id:%s, name:%s, age:%f" i id name age
   0

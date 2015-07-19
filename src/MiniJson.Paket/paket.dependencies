@@ -1,1 +1,2 @@
 http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.fs
+http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.Dynamic.fs

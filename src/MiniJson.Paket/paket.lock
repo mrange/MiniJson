@@ -2,4 +2,5 @@
 HTTP
   remote: https://raw.githubusercontent.com
   specs:
+    MiniJson.Dynamic.fs (/mrange/MiniJson/master/src/MiniJson/MiniJson.Dynamic.fs)
     MiniJson.fs (/mrange/MiniJson/master/src/MiniJson/MiniJson.fs)
