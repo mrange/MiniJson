@@ -13,9 +13,9 @@ The best way of referencing MiniJson is to use [Paket](http://www.nuget.org/pack
 http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.fs
 ```
 
-Other than [NuGet](http://www.nuget.org/packages/MiniJson/) can also be used to reference MiniJson
+[NuGet](http://www.nuget.org/packages/MiniJson/) can also be used to reference MiniJson
 
-To install MiniJson, run the following command in the [Package Manager Console](http://docs.nuget.org/consume/package-manager-console)
+To install MiniJson using NuGet, run the following command in the [Package Manager Console](http://docs.nuget.org/consume/package-manager-console)
 ```
 PM> Install-Package MiniJson
 ```
