@@ -314,6 +314,27 @@ let errorReportingTestCases (dumper : string -> unit) =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
+let toStringTestCases (dumper : string -> unit) =
+  let testCases = Array.zip3 positiveTestCases noIndentOracles withIndentOracles
+
+  infof "Running %d toString testcases..." testCases.Length
+
+  for (positive, name, testCase), noIndentOracle ,withIndentOracle in testCases do
+    dumper "---==> TO STRING <==---"
+    dumper name
+    dumper (if positive then "positive" else "negative")
+    dumper testCase
+    match parse false testCase with
+    | Success v       ->
+      check_eq noIndentOracle   (v.ToString ()    ) name
+      check_eq noIndentOracle   (toString false v ) name
+      check_eq withIndentOracle (toString true v  ) name
+
+    | Failure (_, _)  ->
+      test_failuref "Parsing expected to succeed for '%s'" name
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
 let pathTestCases (dumper : string -> unit) =
   infof "Running json path testcases..."
 
@@ -366,20 +387,22 @@ let pathTestCases (dumper : string -> unit) =
 
   let path = rootObject.Path
 
-  check_scalar (defaultNull           ) (path?Object?Null     .Value        )
-  check_scalar (defaultBoolean false  ) (path?Object?Boolean  .Value        )
-  check_scalar (defaultNumber  123.   ) (path?Object?Number   .Value        )
-  check_scalar (defaultString  "There") (path?Object?String   .Value        )
+  let x = !!path
 
-  check_scalar (defaultNull           ) (path?Object?Array    .[0]    .Value)
-  check_scalar (defaultBoolean true   ) (path?Object?Array    .[1]    .Value)
-  check_scalar (defaultNumber  0.     ) (path?Object?Array    .[2]    .Value)
-  check_scalar (defaultString  "Hello") (path?Object?Array    .[3]    .Value)
+  check_scalar (defaultNull           ) (!!path?Object?Null         )
+  check_scalar (defaultBoolean false  ) (!!path?Object?Boolean      )
+  check_scalar (defaultNumber  123.   ) (!!path?Object?Number       )
+  check_scalar (defaultString  "There") (!!path?Object?String       )
 
-  check_scalar (defaultNull           ) (path?Array .[0]      .Value        )
-  check_scalar (defaultBoolean true   ) (path?Array .[1]      .Value        )
-  check_scalar (defaultNumber  0.     ) (path?Array .[2]      .Value        )
-  check_scalar (defaultString  "Hello") (path?Array .[3]      .Value        )
+  check_scalar (defaultNull           ) (!!path?Object?Array    .[0])
+  check_scalar (defaultBoolean true   ) (!!path?Object?Array    .[1])
+  check_scalar (defaultNumber  0.     ) (!!path?Object?Array    .[2])
+  check_scalar (defaultString  "Hello") (!!path?Object?Array    .[3])
+
+  check_scalar (defaultNull           ) (!!path?Array .[0]          )
+  check_scalar (defaultBoolean true   ) (!!path?Array .[1]          )
+  check_scalar (defaultNumber  0.     ) (!!path?Array .[2]          )
+  check_scalar (defaultString  "Hello") (!!path?Array .[3]          )
 
 
 // ----------------------------------------------------------------------------------------------
@@ -403,7 +426,7 @@ let main argv =
 
     functionalTestCases         dumper
     functionalJsonNetTestCases  dumper
-//  TODO: Figure out a good way to test error strings
+    toStringTestCases           dumper
     errorReportingTestCases     dumper
 #if !DEBUG
     performanceTestCases        dumper

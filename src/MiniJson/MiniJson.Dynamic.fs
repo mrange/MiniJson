@@ -41,6 +41,33 @@ type JsonQueryError =
 type Path         = Json*(JsonQuery*Json) list
 type InvalidPath  = JsonQueryError list*Json*(JsonQuery*Json) list
 
+module Details =
+    let inline ch   (sb : StringBuilder) (c : char)    : unit = ignore <| sb.Append c
+    let inline str  (sb : StringBuilder) (s : string)  : unit = ignore <| sb.Append s
+    let inline ii   (sb : StringBuilder) (i : int)     : unit = ignore <| sb.Append i
+
+    let rec appendParents (sb : StringBuilder) = function
+      | []    -> ()
+      | p::ps ->
+        match p with
+        | (QueryProperty name, _) -> ch sb '.'; str sb name
+        | (QueryIndexOf i, _)     -> str sb ".["; ii sb i; ch sb ']'
+        appendParents sb ps
+
+    let rec appendErrors (sb : StringBuilder)  = function
+      | []    -> ()
+      | e::es ->
+        match e with
+        | ErrorNotObject name
+        | ErrorUnknownProperty name -> ch sb '!'; str sb name
+        | ErrorNotIndexable i
+        | ErrorIndexOutBounds i     -> str sb "!["; ii sb i; ch sb ']'
+        appendErrors sb es
+
+open Details
+
+[<NoEquality>]
+[<NoComparison>]
 type JsonScalar =
   | ScalarNull        of Path
   | ScalarBoolean     of Path*bool
@@ -88,28 +115,6 @@ type JsonScalar =
     | ScalarInvalidPath _     -> Double.NaN
 
   member x.AsString : string =
-    let inline ch   (sb : StringBuilder) (c : char)    : unit = ignore <| sb.Append c
-    let inline str  (sb : StringBuilder) (s : string)  : unit = ignore <| sb.Append s
-    let inline ii   (sb : StringBuilder) (i : int)     : unit = ignore <| sb.Append i
-
-    let rec loopParents sb = function
-      | []    -> ()
-      | p::ps ->
-        match p with
-        | (QueryProperty name, _) -> ch sb '.'; str sb name
-        | (QueryIndexOf i, _)     -> str sb ".["; ii sb i; ch sb ']'
-        loopParents sb ps
-
-    let rec loopErrors sb = function
-      | []    -> ()
-      | e::es ->
-        match e with
-        | ErrorNotObject name
-        | ErrorUnknownProperty name -> ch sb '!'; str sb name
-        | ErrorNotIndexable i
-        | ErrorIndexOutBounds i     -> str sb "!["; ii sb i; ch sb ']'
-        loopErrors sb es
-
     match x with
     | ScalarNull      _             -> "null"
     | ScalarBoolean   (_,b)         -> if b then "true" else "false"
@@ -118,24 +123,23 @@ type JsonScalar =
     | ScalarNotScalar path          ->
       let json, parents = path
       let sb = StringBuilder ("NotScalar: root")
-
-      loopParents sb parents
-
+      appendParents sb parents
       sb.ToString ()
     | ScalarInvalidPath invalidPath ->
       let errors, json, parents = invalidPath
       let sb = StringBuilder ("InvalidPath: root")
-
-      loopParents sb parents
-      loopErrors  sb errors
-
+      appendParents sb parents
+      appendErrors  sb errors
       sb.ToString ()
 
-and  JsonPath =
+    override x.ToString () : string =
+      x.AsString
+
+type  JsonPath =
   | PathOk    of Path
   | PathError of InvalidPath
 
-  member x.Value : JsonScalar =
+  member x.Eval : JsonScalar =
     match x with
     | PathOk path ->
       let json, _ = path
@@ -178,7 +182,7 @@ and  JsonPath =
     | PathError (errors, json, parents) ->
       PathError ((ErrorNotIndexable i)::errors, json, parents)
 
-  member x.Property (name : string) : JsonPath =
+  member x.Get (name : string) : JsonPath =
     match x with
     | PathOk (json, parents) ->
       match json with
@@ -202,11 +206,26 @@ and  JsonPath =
     | PathError (errors, json, parents) ->
       PathError ((ErrorNotObject name)::errors, json, parents)
 
+  override x.ToString () : string =
+    match x with
+    | PathOk (_, parents) ->
+      let sb = StringBuilder ("Path: root")
+      appendParents sb parents
+      sb.ToString ()
+    | PathError (errors, _, parents) ->
+      let sb = StringBuilder ("Path: root")
+      appendParents sb parents
+      appendErrors  sb errors
+      sb.ToString ()
+
   static member ( ? ) (path : JsonPath, name : string) : JsonPath =
-    path.Property name
+    path.Get name
+
+  static member ( !! ) (path : JsonPath) : JsonScalar =
+    path.Eval
+
 
 let inline makePath (json : Json) = PathOk (json, [])
 
 type Json with
-
   member x.Path : JsonPath = makePath x

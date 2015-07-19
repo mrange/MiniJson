@@ -59,6 +59,178 @@ let positiveTestCases =
     "\t[\rfalse \r\n, true\n]\t"
   |] |> Array.map (fun v -> true, sprintf "Positive: %s" v, v)
 
+let noIndentOracles =
+  [|
+    """[0]"""
+    """[0]"""
+    """[0.125]"""
+    """[-0.125]"""
+    """[0]"""
+    """[0]"""
+    """[125]"""
+    """[-12.5]"""
+    """[125]"""
+    """[-125]"""
+    """[1.25]"""
+    """[-12.5]"""
+    """[125]"""
+    """[-0.125]"""
+    """[-1250]"""
+    """[null]"""
+    """[true]"""
+    """[false]"""
+    """["Hello\r\nThere"]"""
+    """["HelloJ"]"""
+    """["\"\\\/\b\f\n\r\t♥"]"""
+    "[\"\u0123\u4567\u89AB\uCDEF\"]"
+    "[\"\u0123\u4567\u89ab\ucdef\"]"
+    """[false,true,null]"""
+    """[false,true,null]"""
+    """[[],null,[true]]"""
+    """{"abc":123}"""
+    """{"abc":123}"""
+    """{"abc":123}"""
+    """{"abc":123}"""
+    "[false,true]"
+  |]
+
+let withIndentOracles =
+  [|
+    """[
+  0
+]"""
+
+    """[
+  0
+]"""
+
+    """[
+  0.125
+]"""
+
+    """[
+  -0.125
+]"""
+
+    """[
+  0
+]"""
+
+    """[
+  0
+]"""
+
+    """[
+  125
+]"""
+
+    """[
+  -12.5
+]"""
+
+    """[
+  125
+]"""
+
+    """[
+  -125
+]"""
+
+    """[
+  1.25
+]"""
+
+    """[
+  -12.5
+]"""
+
+    """[
+  125
+]"""
+
+    """[
+  -0.125
+]"""
+
+    """[
+  -1250
+]"""
+
+    """[
+  null
+]"""
+
+    """[
+  true
+]"""
+
+    """[
+  false
+]"""
+
+    """[
+  "Hello\r\nThere"
+]"""
+
+    """[
+  "HelloJ"
+]"""
+
+    """[
+  "\"\\\/\b\f\n\r\t♥"
+]"""
+
+    "[\r\n  \"\u0123\u4567\u89AB\uCDEF\"\r\n]"
+    "[\r\n  \"\u0123\u4567\u89ab\ucdef\"\r\n]"
+
+    """[
+  false,
+  true,
+  null
+]"""
+
+    """[
+  false,
+  true,
+  null
+]"""
+
+    """[
+  [
+  ],
+  null,
+  [
+    true
+  ]
+]"""
+
+    """{
+  "abc":
+    123
+}"""
+
+    """{
+  "abc":
+    123
+}"""
+
+    """{
+  "abc":
+    123
+}"""
+
+    """{
+  "abc":
+    123
+}"""
+
+    """[
+  false,
+  true
+]"""
+
+  |]
+
 let negativeTestCases =
   [|
     """null"""
@@ -74,6 +246,8 @@ let negativeTestCases =
     """[0125]"""
     """[+0]"""
     """[+125]"""
+    """[.1]"""
+    """[-.0]"""
     """[1.]"""
     """[1E]"""
     """[1E+]"""
@@ -158,6 +332,16 @@ Expected: '"', '-', '[', '{', digit, false, null or true"""
 [+125]
 -^ Pos: 1
 Expected: '"', '-', '[', '{', digit, false, null or true"""
+
+    """Failed to parse input as JSON
+[.1]
+-^ Pos: 1
+Expected: '"', '-', '[', '{', digit, false, null or true"""
+
+    """Failed to parse input as JSON
+[-.0]
+--^ Pos: 2
+Expected: '0' or digit"""   // TODO: Improve this error message by removing '0'
 
     """Failed to parse input as JSON
 [1.]
