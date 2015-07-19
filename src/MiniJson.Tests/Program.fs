@@ -470,7 +470,7 @@ let main argv =
 
     Environment.CurrentDirectory <- AppDomain.CurrentDomain.BaseDirectory
 
-#if DUMP_JSON
+#if !DUMP_JSON
     let dumper _            = ()
 #else
     use dump = File.CreateText "dump.txt"
