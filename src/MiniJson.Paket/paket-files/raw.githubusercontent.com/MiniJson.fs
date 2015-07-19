@@ -14,7 +14,7 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
 
-/// MiniJson aims to be a minimal yet compliant JSON parser with reasonable performance and decent error reporting
+/// MiniJson aims to be a minimal yet conforming JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
 #if PUBLIC_MINIJSON
@@ -30,11 +30,32 @@ module Internal.MiniJson.JsonModule
 module internal Internal.MiniJson.JsonModule
 #endif
 #endif
-open System
 open System.Collections.Generic
 open System.Diagnostics
 open System.Globalization
 open System.Text
+
+module internal Tokens =
+  [<Literal>]
+  let Null      = "null"
+
+  [<Literal>]
+  let True      = "true"
+
+  [<Literal>]
+  let False     = "false"
+
+  [<Literal>]
+  let Digit     = "digit"
+
+  [<Literal>]
+  let HexDigit  = "hexdigit"
+
+  [<Literal>]
+  let EOS       = "EOS"
+
+  [<Literal>]
+  let NewLine   = "NEWLINE"
 
 type Json =
   | JsonNull
@@ -99,9 +120,9 @@ type Json =
 
     let rec impl j =
       match j with
-      | JsonNull          -> str "null"
-      | JsonBoolean true  -> str "true"
-      | JsonBoolean false -> str "false"
+      | JsonNull          -> str Tokens.Null
+      | JsonBoolean true  -> str Tokens.True
+      | JsonBoolean false -> str Tokens.False
       | JsonNumber n      -> num n
       | JsonString s      -> estr s
       | JsonArray vs      -> values '[' ']' vs impl
@@ -134,61 +155,55 @@ type Json =
 let toString doIndent (json : Json) : string =
   json.ToString doIndent
 
-type ParseVisitor =
+type IParseVisitor =
   interface
-    abstract NullValue    : unit        -> bool
-    abstract BoolValue    : bool        -> bool
-    abstract NumberValue  : double      -> bool
-    abstract StringValue  : string      -> bool
-    abstract ArrayBegin   : unit        -> bool
-    abstract ArrayEnd     : unit        -> bool
-    abstract ObjectBegin  : unit        -> bool
-    abstract ObjectEnd    : unit        -> bool
-    abstract MemberKey    : string      -> bool
-    abstract ExpectedChar : int*char    -> unit
-    abstract Expected     : int*string  -> unit
-    abstract Unexpected   : int*string  -> unit
+    abstract NullValue    : unit          -> bool
+    abstract BoolValue    : bool          -> bool
+    abstract NumberValue  : double        -> bool
+    abstract StringValue  : StringBuilder -> bool
+    abstract ArrayBegin   : unit          -> bool
+    abstract ArrayEnd     : unit          -> bool
+    abstract ObjectBegin  : unit          -> bool
+    abstract ObjectEnd    : unit          -> bool
+    abstract MemberKey    : StringBuilder -> bool
+    abstract ExpectedChar : int*char      -> unit
+    abstract Expected     : int*string    -> unit
+    abstract Unexpected   : int*string    -> unit
   end
 
-module Details =
+module internal Details =
+  [<Literal>]
+  let DefaultSize = 16
 
   [<Literal>]
-  let token_Null  = "null"
-
-  [<Literal>]
-  let token_True  = "true"
-
-  [<Literal>]
-  let token_False = "false"
-
-  [<Literal>]
-  let error_Prelude = "Failed to parse input as JSON"
+  let ErrorPrelude = "Failed to parse input as JSON"
 
   let inline neos (s : string) (pos : int) : bool = pos < s.Length
   let inline eos  (s : string) (pos : int) : bool = pos >= s.Length
   let inline ch   (s : string) (pos : int) : char = s.[pos]
   let inline adv  (p : byref<int>)                = p <- p + 1
 
-  let inline raiseEos (v : ParseVisitor) (pos : int) : bool =
-    v.Unexpected (pos, "EOS")
+  let inline raiseEos (v : IParseVisitor) (pos : int) : bool =
+    v.Unexpected (pos, Tokens.EOS)
     false
 
   let inline pow n = pown 10.0 n
 
-  let raiseValue (v : ParseVisitor) (pos : int) : bool =
-    v.Expected      (pos, "null"  )
-    v.Expected      (pos, "true"  )
-    v.Expected      (pos, "false" )
-    v.ExpectedChar  (pos, '"'     )
-    v.ExpectedChar  (pos, '{'     )
-    v.ExpectedChar  (pos, '['     )
-    v.ExpectedChar  (pos, '-'     )
-    v.Expected      (pos, "digit" )
+  let expectedChars (v : IParseVisitor) (p : int) (chars : string) : unit =
+    let e = chars.Length - 1
+    for i = 0 to e do
+      v.ExpectedChar (p, chars.[i])
+
+  let raiseValue (v : IParseVisitor) (pos : int) : bool =
+    v.Expected      (pos, Tokens.Null )
+    v.Expected      (pos, Tokens.True )
+    v.Expected      (pos, Tokens.False)
+    v.Expected      (pos, Tokens.Digit)
+    expectedChars v pos "\"{[-"
     false
 
-  let raiseRoot (v : ParseVisitor) (pos : int) : bool =
-    v.ExpectedChar  (pos, '{'     )
-    v.ExpectedChar  (pos, '['     )
+  let raiseRoot (v : IParseVisitor) (pos : int) : bool =
+    expectedChars v pos "{["
     false
 
   let inline isWhiteSpace (c : char) : bool =
@@ -206,37 +221,13 @@ module Details =
     true
 
   let inline isDigit (c : char) : bool =
-    match c with
-    | '0'
-    | '1'
-    | '2'
-    | '3'
-    | '4'
-    | '5'
-    | '6'
-    | '7'
-    | '8'
-    | '9' -> true
-    | _   -> false
-
-  let inline isDigit19 (c : char) : bool =
-    match c with
-    | '1'
-    | '2'
-    | '3'
-    | '4'
-    | '5'
-    | '6'
-    | '7'
-    | '8'
-    | '9' -> true
-    | _   -> false
+    c >= '0' && c <= '9'
 
   let inline test_Char (c : char) (s : string) (pos : int) : bool =
     neos s pos
     && ch s pos = c
 
-  let inline tryConsume_Char (c : char) (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let inline tryConsume_Char (c : char) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     elif (ch s pos) = c then
       adv &pos
@@ -245,7 +236,7 @@ module Details =
       v.ExpectedChar (pos, c)
       false
 
-  let inline tryParse_AnyOf (cs : char []) (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<char>): bool =
+  let inline tryParse_AnyOf (cs : char []) (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<char>): bool =
     if eos s pos then raiseEos v pos
     else
       let c = ch s pos
@@ -260,41 +251,38 @@ module Details =
 
   let inline tryConsume_Token (tk : string) (s : string) (pos : byref<int>) : bool =
     let tkl = tk.Length
-    if pos + tkl <= s.Length then
-      let spos = pos
-      let mutable tpos = 0
+    let spos = pos
+    let mutable tpos = 0
 
-      while tpos < tkl && tk.[tpos] = s.[pos] do
-        adv &tpos
-        adv &pos
+    while tpos < tkl && tk.[tpos] = s.[pos] do
+      adv &tpos
+      adv &pos
 
-      if tpos = tkl then true
-      else
-        // To support error reporting, move back on failure
-        pos <- spos
-        false
+    if tpos = tkl then true
     else
+      // To support error reporting, move back on failure
+      pos <- spos
       false
 
-  let tryParse_Null (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if tryConsume_Token token_Null s &pos then
+  let tryParse_Null (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    if tryConsume_Token Tokens.Null s &pos then
       v.NullValue ()
     else
       raiseValue v pos
 
-  let tryParse_True (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if tryConsume_Token token_True s &pos then
+  let tryParse_True (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    if tryConsume_Token Tokens.True s &pos then
       v.BoolValue true
     else
       raiseValue v pos
 
-  let tryParse_False (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if tryConsume_Token token_False s &pos then
+  let tryParse_False (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    if tryConsume_Token Tokens.False s &pos then
       v.BoolValue false
     else
       raiseValue v pos
 
-  let rec tryParse_UInt (first : bool) (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+  let rec tryParse_UInt (first : bool) (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     let z = float '0'
     if eos s pos then ignore <| raiseEos v pos; not first
     else
@@ -304,10 +292,10 @@ module Details =
         r <- 10.0*r + (float c - z)
         tryParse_UInt false v s &pos &r
       else
-        v.Expected (pos, "digit")
+        v.Expected (pos, Tokens.Digit)
         not first
 
-  let tryParse_UInt0 (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+  let tryParse_UInt0 (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     // tryParse_UInt0 only consumes 0 if input is 0123, this in order to be conformant with spec
     let zero          = tryConsume_Char '0' v s &pos
 
@@ -317,7 +305,7 @@ module Details =
     else
       tryParse_UInt true v s &pos &r
 
-  let tryParse_Fraction (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
+  let tryParse_Fraction (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<float>) : bool =
     if tryConsume_Char '.' v s &pos then
       let spos        = pos
       let mutable uf  = 0.
@@ -329,7 +317,7 @@ module Details =
     else
       true  // Fraction is optional
 
-  let tryParse_Exponent (v : ParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
+  let tryParse_Exponent (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
     let mutable exp = ' '
     if tryParse_AnyOf [|'e';'E'|] v s &pos &exp then
       let mutable sign = '+'
@@ -347,7 +335,7 @@ module Details =
     else
       true  // Fraction is optional
 
-  let tryParse_Number (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_Number (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     let hasSign       = tryConsume_Char '-' v s &pos
     let inline sign v = if hasSign then -v else v
 
@@ -365,7 +353,7 @@ module Details =
     else
       false
 
-  let rec tryParse_UnicodeChar (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) (n : int) (r : int) : bool =
+  let rec tryParse_UnicodeChar (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) (n : int) (r : int) : bool =
     if n = 0 then
       ignore <| sb.Append (char r)
       true
@@ -377,10 +365,10 @@ module Details =
       elif  c >= 'A' && c <= 'F'  then adv &pos ; tryParse_UnicodeChar sb v s &pos (n - 1) (sr + (int c - int 'A' + 10))
       elif  c >= 'a' && c <= 'f'  then adv &pos ; tryParse_UnicodeChar sb v s &pos (n - 1) (sr + (int c - int 'a' + 10))
       else
-        v.Expected (pos, "hexdigit")
+        v.Expected (pos, Tokens.HexDigit)
         false
 
-  let rec tryParse_Chars (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let rec tryParse_Chars (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     let inline app (c : char) = ignore <| sb.Append c
 
     if eos s pos then raiseEos v pos
@@ -388,7 +376,7 @@ module Details =
       let c = ch s pos
       match c with
       | '"'         -> true
-      | '\r' | '\n' -> v.Unexpected (pos, "NEWLINE"); false
+      | '\r' | '\n' -> v.Unexpected (pos, Tokens.NewLine); false
       | '\\'        ->
         adv &pos
         if eos s pos then raiseEos v pos
@@ -408,15 +396,7 @@ module Details =
               adv &pos
               tryParse_UnicodeChar sb v s &pos 4 0
             | _ ->
-              v.ExpectedChar (pos, '"' )
-              v.ExpectedChar (pos, '\\')
-              v.ExpectedChar (pos, '/' )
-              v.ExpectedChar (pos, 'b' )
-              v.ExpectedChar (pos, 'f' )
-              v.ExpectedChar (pos, 'n' )
-              v.ExpectedChar (pos, 'r' )
-              v.ExpectedChar (pos, 't' )
-              v.ExpectedChar (pos, 'u' )
+              expectedChars v pos "\"\\/bfnrtu"
               false
           result && tryParse_Chars sb v s &pos
       | _           ->
@@ -424,100 +404,91 @@ module Details =
         app c
         tryParse_Chars sb v s &pos
 
-  let tryParse_ToStringBuilder (sb : StringBuilder) (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_ToStringBuilder (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     ignore <| sb.Clear ()
     tryConsume_Char           '"' v s &pos
     && tryParse_Chars      sb     v s &pos
     && tryConsume_Char        '"' v s &pos
 
-  let tryParse_String (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    // TODO: Reuse StringBuilder
-    let sb = StringBuilder ()
+  let tryParse_String (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryParse_ToStringBuilder sb v s &pos
-    && v.StringValue (sb.ToString ())
+    && v.StringValue sb
 
-  let tryParse_MemberKey (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    // TODO: Reuse StringBuilder
-    let sb = StringBuilder ()
+  let tryParse_MemberKey (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     tryParse_ToStringBuilder sb v s &pos
-    && v.MemberKey (sb.ToString ())
+    && v.MemberKey sb
 
-  let inline tryConsume_Delimiter first (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let inline tryConsume_Delimiter first (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if first then true
     else
       tryConsume_Char         ',' v s &pos
       && consume_WhiteSpace         s &pos
 
-  let rec tryParse_ArrayValues first (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let rec tryParse_ArrayValues first (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if test_Char ']' s pos then
       true
     else
-      tryConsume_Delimiter    first v s &pos
-      && tryParse_Value             v s &pos
-      && tryParse_ArrayValues false v s &pos
+      tryConsume_Delimiter    first     v s &pos
+      && tryParse_Value             sb  v s &pos
+      && tryParse_ArrayValues false sb  v s &pos
 
-  and tryParse_Array (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    tryConsume_Char           '[' v s &pos
-    && consume_WhiteSpace           s &pos
+  and tryParse_Array (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    tryConsume_Char           '['     v s &pos
+    && consume_WhiteSpace               s &pos
     && v.ArrayBegin ()
-    && tryParse_ArrayValues true  v s &pos
-    && tryConsume_Char        ']' v s &pos
+    && tryParse_ArrayValues true  sb  v s &pos
+    && tryConsume_Char        ']'     v s &pos
     && v.ArrayEnd ()
 
-  and tryParse_ObjectMembers first (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_ObjectMembers first (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if test_Char '}' s pos then
       true
     else
-      tryConsume_Delimiter      first v s &pos
-      && tryParse_MemberKey           v s &pos
-      && consume_WhiteSpace             s &pos
-      && tryConsume_Char          ':' v s &pos
-      && consume_WhiteSpace             s &pos
-      && tryParse_Value               v s &pos
-      && tryParse_ObjectMembers false v s &pos
+      tryConsume_Delimiter      first     v s &pos
+      && tryParse_MemberKey           sb  v s &pos
+      && consume_WhiteSpace                 s &pos
+      && tryConsume_Char          ':'     v s &pos
+      && consume_WhiteSpace                 s &pos
+      && tryParse_Value               sb  v s &pos
+      && tryParse_ObjectMembers false sb  v s &pos
 
-  and tryParse_Object (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    tryConsume_Char               '{' v s &pos
-    && consume_WhiteSpace               s &pos
+  and tryParse_Object (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    tryConsume_Char               '{'     v s &pos
+    && consume_WhiteSpace                   s &pos
     && v.ObjectBegin ()
-    && tryParse_ObjectMembers    true v s &pos
-    && tryConsume_Char            '}' v s &pos
+    && tryParse_ObjectMembers    true sb  v s &pos
+    && tryConsume_Char            '}'     v s &pos
     && v.ObjectEnd ()
 
-  and tryParse_Value (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  and tryParse_Value (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     else
       let result =
         match ch s pos with
-        | 'n'                 -> tryParse_Null    v s &pos
-        | 't'                 -> tryParse_True    v s &pos
-        | 'f'                 -> tryParse_False   v s &pos
-        | '['                 -> tryParse_Array   v s &pos
-        | '{'                 -> tryParse_Object  v s &pos
-        | '"'                 -> tryParse_String  v s &pos
-        | '-'                 -> tryParse_Number  v s &pos
-        | c when isDigit c    -> tryParse_Number  v s &pos
+        | 'n'                 -> tryParse_Null        v s &pos
+        | 't'                 -> tryParse_True        v s &pos
+        | 'f'                 -> tryParse_False       v s &pos
+        | '['                 -> tryParse_Array   sb  v s &pos
+        | '{'                 -> tryParse_Object  sb  v s &pos
+        | '"'                 -> tryParse_String  sb  v s &pos
+        | '-'                 -> tryParse_Number      v s &pos
+        | c when isDigit c    -> tryParse_Number      v s &pos
         | _                   -> raiseValue v pos
       result && consume_WhiteSpace s &pos
-  let tryParse_RootValue (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let tryParse_RootValue (sb : StringBuilder) (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
     if eos s pos then raiseEos v pos
     else
       let result =
         match ch s pos with
-        | '['                 -> tryParse_Array   v s &pos
-        | '{'                 -> tryParse_Object  v s &pos
+        | '['                 -> tryParse_Array  sb v s &pos
+        | '{'                 -> tryParse_Object sb v s &pos
         | _                   -> raiseRoot v pos
       result && consume_WhiteSpace s &pos
 
-  let tryParse_Eos (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    if neos s pos then v.Expected (pos, "EOS"); false
+  let tryParse_Eos (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+    if neos s pos then v.Expected (pos, Tokens.EOS); false
     else
       true
-
-  let tryParse (v : ParseVisitor) (s : string) (pos : byref<int>) : bool =
-    consume_WhiteSpace s &pos
-    && tryParse_RootValue v s &pos
-    && tryParse_Eos v s &pos
 
   [<NoEquality>]
   [<NoComparison>]
@@ -530,17 +501,39 @@ module Details =
   [<NoEquality>]
   [<NoComparison>]
   type JsonParseVisitor() =
-    let context       = Stack<JsonBuilder> ()
+    let context             = Stack<JsonBuilder> (DefaultSize)
+    let freeObjectBuilders  = Stack<JsonBuilder> (DefaultSize)
+    let freeArrayBuilders   = Stack<JsonBuilder> (DefaultSize)
 
-    let push v        =
-      context.Push v
+    let pushObject ()        =
+      if freeObjectBuilders.Count > 0 then
+        context.Push (freeObjectBuilders.Pop ())
+      else
+        context.Push (BuilderObject <| (ref System.String.Empty, ResizeArray<_>(DefaultSize)))
+      true
+
+    let pushArray ()        =
+      if freeArrayBuilders.Count > 0 then
+        context.Push (freeArrayBuilders.Pop ())
+      else
+        context.Push (BuilderArray <| ResizeArray<_>(DefaultSize))
       true
 
     let pop ()        =
-      match context.Pop () with
+      let v = context.Pop ()
+      match v with
       | BuilderRoot   vr      -> !vr
-      | BuilderObject (_,ms)  -> JsonObject (ms.ToArray ())
-      | BuilderArray  vs      -> JsonArray (vs.ToArray ())
+      | BuilderObject (rk,ms)  ->
+        let result  = JsonObject (ms.ToArray ())
+        rk := System.String.Empty
+        ms.Clear ()
+        freeObjectBuilders.Push v
+        result
+      | BuilderArray  vs      ->
+        let result  = JsonArray (vs.ToArray ())
+        vs.Clear ()
+        freeArrayBuilders.Push v
+        result
 
     let setKey k      =
       match context.Peek () with
@@ -559,19 +552,17 @@ module Details =
     do
       context.Push <| (BuilderRoot <| ref JsonNull)
 
-    let defaultSize = 4
-
-    interface ParseVisitor with
+    interface IParseVisitor with
       override x.NullValue    ()      = add <| JsonNull
       override x.BoolValue    v       = add <| JsonBoolean v
       override x.NumberValue  v       = add <| JsonNumber v
-      override x.StringValue  v       = add <| JsonString v
+      override x.StringValue  v       = add <| JsonString (v.ToString ())
 
-      override x.ArrayBegin   ()      = push (BuilderArray <| ResizeArray<_>(defaultSize))
+      override x.ArrayBegin   ()      = pushArray ()
       override x.ArrayEnd     ()      = add <| pop ()
-      override x.ObjectBegin  ()      = push (BuilderObject <| (ref "", ResizeArray<_>(defaultSize)))
+      override x.ObjectBegin  ()      = pushObject ()
       override x.ObjectEnd    ()      = add <| pop ()
-      override x.MemberKey    v       = setKey v
+      override x.MemberKey    v       = setKey <| v.ToString ()
 
       override x.ExpectedChar (p,e)   = ()
       override x.Expected     (p,e)   = ()
@@ -585,13 +576,13 @@ module Details =
   [<NoEquality>]
   [<NoComparison>]
   type JsonErrorParseVisitor(epos : int) =
-    let expectedChars = ResizeArray<char> ()
-    let expected      = ResizeArray<string> ()
-    let unexpected    = ResizeArray<string> ()
+    let expectedChars = ResizeArray<char>   (DefaultSize)
+    let expected      = ResizeArray<string> (DefaultSize)
+    let unexpected    = ResizeArray<string> (DefaultSize)
 
     let filter f      = f |> Seq.sort |> Seq.distinct |> Seq.toArray
 
-    interface ParseVisitor with
+    interface IParseVisitor with
       override x.NullValue    ()      = true
       override x.BoolValue    v       = true
       override x.NumberValue  v       = true
@@ -611,24 +602,32 @@ module Details =
     member x.Expected       = filter expected
     member x.Unexpected     = filter unexpected
 
+open Details
+
+let tryParse (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+  let sb = StringBuilder DefaultSize
+  consume_WhiteSpace s &pos
+  && tryParse_RootValue sb v s &pos
+  && tryParse_Eos v s &pos
+
 type ParseResult =
   | Success of Json
   | Failure of string*int
 
 let parse (fullErrorInfo : bool) (s : string) : ParseResult =
   let mutable pos = 0
-  let v           = Details.JsonParseVisitor ()
+  let v           = JsonParseVisitor ()
 
-  match Details.tryParse (upcast v) s &pos, fullErrorInfo with
+  match tryParse (upcast v) s &pos, fullErrorInfo with
   | true  , _     ->
     Success (v.Root ())
   | false , false ->
-    Failure (Details.error_Prelude, pos)
+    Failure (ErrorPrelude, pos)
   | false , true  ->
     let mutable epos  = 0
-    let ev            = Details.JsonErrorParseVisitor (pos)
+    let ev            = JsonErrorParseVisitor (pos)
 
-    ignore <| Details.tryParse (upcast ev) s &epos
+    ignore <| tryParse (upcast ev) s &epos
 
     let sb = StringBuilder ()
     let inline str  (s : string)  = ignore <| sb.Append s
@@ -671,7 +670,7 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
         let ap  = pos - ab
         ab, ae, ap
 
-    strl Details.error_Prelude
+    strl ErrorPrelude
     for i = windowBegin to windowEnd do
       let c =
         match s.[i] with

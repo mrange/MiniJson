@@ -14,7 +14,7 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------------------
 
-/// MiniJson aims to be a minimal yet compliant JSON parser with reasonable performance and decent error reporting
+/// MiniJson aims to be a minimal yet conforming JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
 #if PUBLIC_MINIJSON
@@ -49,7 +49,7 @@ type JsonQueryError =
 type Path         = Json*(JsonQuery*Json) list
 type InvalidPath  = JsonQueryError list*Json*(JsonQuery*Json) list
 
-module Details =
+module internal Details =
     let inline ch   (sb : StringBuilder) (c : char)    : unit = ignore <| sb.Append c
     let inline str  (sb : StringBuilder) (s : string)  : unit = ignore <| sb.Append s
     let inline ii   (sb : StringBuilder) (i : int)     : unit = ignore <| sb.Append i

@@ -108,9 +108,9 @@
     <Compile Include="paket-files/raw.githubusercontent.com/MiniJson.Dynamic.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
-    <Content Include="packages.config" />
     <None Include="paket.dependencies" />
     <None Include="paket.lock" />
+    <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

@@ -110,7 +110,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="MiniJson">
-      <HintPath>..\packages\M3.MiniJson.2.0.1\lib\net452\MiniJson.dll</HintPath>
+      <HintPath>..\packages\M3.MiniJson.2.1.0\lib\net452\MiniJson.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />
