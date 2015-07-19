@@ -9,16 +9,19 @@
     <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
     <projectUrl>https://github.com/mrange/MiniJson</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>MiniJson aims to be a conforming (http://json.org/) and performing JSON (de)serializer that provides decent error reporting on parse failures.</description>
-    <summary>MiniJson is a Json library licensed under Apache License, Version 2.0</summary>
-    <tags>parser json</tags>
+    <description>
+        MiniJson aims to be a functionally idiomatic, conforming (http://json.org/) and
+        performing JSON (de)serializer that provides decent error reporting on parse failures.
+    </description>
+    <summary>MiniJson is a JSON library for F# licensed under Apache License, Version 2.0</summary>
+    <tags>parser json F# fsharp</tags>
     <frameworkAssemblies>
     </frameworkAssemblies>
     <releaseNotes>
       * 1.0.0   - Initial release
-      * 2.0.0   - Internalizing internal parser details (breaking change)
+      * 2.0.0   - Internalizing internal parser details (breaking change for users relying on internal parser details)
       * 2.0.1   - Documentation update
-      * 2.1.0   - Improved performance
+      * 2.1.0   - Improved performance (breaking change for users of IParseVisitor)
     </releaseNotes>
   </metadata>
   <files>
