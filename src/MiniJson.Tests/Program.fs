@@ -488,12 +488,11 @@ let main argv =
     let dumper (s : string) = dump.WriteLine s
 #endif
 
-    pathTestCases               dumper
-
     functionalTestCases         dumper
     functionalJsonNetTestCases  dumper
     toStringTestCases           dumper
     errorReportingTestCases     dumper
+    pathTestCases               dumper
 #if !DEBUG
     performanceTestCases        dumper
     performanceJsonNetTestCases dumper
