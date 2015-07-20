@@ -69,6 +69,10 @@ module internal Tokens =
   [<Literal>]
   let NewLine   = "NEWLINE"
 
+  let Exponent  = [|'e'; 'E'|]
+
+  let Sign      = [|'+'; '-'|]
+
 /// Represents a JSON document
 type Json =
   /// ()         - Represents a JSON null value
@@ -372,10 +376,10 @@ module internal Details =
 
   let tryParse_Exponent (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
     let mutable exp = ' '
-    if tryParse_AnyOf [|'e';'E'|] v s &pos &exp then
+    if tryParse_AnyOf Tokens.Exponent v s &pos &exp then
       let mutable sign = '+'
       // Ignore as sign is optional
-      ignore <| tryParse_AnyOf [|'+';'-'|] v s &pos &sign
+      ignore <| tryParse_AnyOf Tokens.Sign v s &pos &sign
       // TODO: Parsing exponent as float seems unnecessary
       let mutable uf = 0.0
       if tryParse_UInt true v s &pos &uf then
