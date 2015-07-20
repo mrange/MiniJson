@@ -140,7 +140,7 @@ let compareParsers
   match expected, actual with
   | Success e     , Success a     ->
     check_eq true  positive  name
-    if test_eq e a testCase then postProcess e a
+    if test_eq e a name then postProcess e a
   | Failure (_,e) , Failure (_,a) ->
     check_eq false positive  name
     check_eq e     a         name
@@ -186,10 +186,10 @@ let runFunctionalTestCases
 let functionalTestCases (dumper : string -> unit) =
   let testCases = Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases|]
 
-  infof "Running %d functional testcases..." testCases.Length
+  infof "Running %d functional testcases (REFERENCE)..." testCases.Length
 
   runFunctionalTestCases
-    "FUNCTIONAL TEST"
+    "FUNCTIONAL TEST (REFERENCE)"
     (compareParsers ReferenceJsonModule.parse)
     testCases
     dumper
@@ -214,8 +214,31 @@ let functionalJsonNetTestCases (dumper : string -> unit) =
   infof "Running %d functional testcases (JSON.NET)..." testCases.Length
 
   runFunctionalTestCases
-    "JSON.NET TEST"
+    "FUNCTIONAL TEST (JSON.NET)"
     (compareParsers MiniJson.Tests.JsonNet.parse)
+    testCases
+    dumper
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let filterForFSharpData (_,name,_) =
+  match name with
+  | "Sample: optionals.json"              -> false  // FSharp.Data difference with MiniJson most likely due to Date/Float parsing, TODO: investigate
+  | _ when name.StartsWith ("Negative: ") -> false  // FSharp.Data is more relaxed when parsing therefore negative testcases can't be compared
+  | _ -> true
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let functionalFSharpDataTestCases (dumper : string -> unit) =
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    |> Array.filter filterForFSharpData
+
+  infof "Running %d functional testcases (FSHARP.DATA)..." testCases.Length
+
+  runFunctionalTestCases
+    "FUNCTIONAL TEST (FSHARP.DATA)"
+    (compareParsers MiniJson.Tests.FSharpData.parse)
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -278,10 +301,10 @@ let performanceTestCases (dumper : string -> unit) =
     Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
     |> Array.filter filterForPerformance
 
-  infof "Running %d performance testcases..." testCases.Length
+  infof "Running %d performance testcases (REFERENCE)..." testCases.Length
 
   runPerformanceTestCases
-    "PERFORMANCE TEST"
+    "PERFORMANCE TEST (REFERENCE)"
     ReferenceJsonModule.parse
     200
     4.0
@@ -302,7 +325,25 @@ let performanceJsonNetTestCases (dumper : string -> unit) =
     "PERFORMANCE TEST (JSON.NET)"
     MiniJson.Tests.JsonNet.parse
     1000
-    1.0
+    1.1
+    testCases
+    dumper
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let performanceFSharpDataTestCases (dumper : string -> unit) =
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    |> Array.filter filterForFSharpData
+    |> Array.filter filterForPerformance
+
+  infof "Running %d performance testcases (FSHARP.DATA)..." testCases.Length
+
+  runPerformanceTestCases
+    "PERFORMANCE TEST (FSHARP.DATA)"
+    MiniJson.Tests.FSharpData.dummyParse  // As we don't want to pay overhead of data conversion
+    1000
+    1.5
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -506,15 +547,17 @@ let main argv =
     let dumper (s : string) = dump.WriteLine s
 #endif
 
-    functionalTestCases         dumper
-    functionalJsonNetTestCases  dumper
-    toStringTestCases           dumper
-    errorReportingTestCases     dumper
-    scalarToStringTestCases     dumper
-    pathTestCases               dumper
+    functionalTestCases             dumper
+    functionalJsonNetTestCases      dumper
+    functionalFSharpDataTestCases   dumper
+    toStringTestCases               dumper
+    errorReportingTestCases         dumper
+    scalarToStringTestCases         dumper
+    pathTestCases                   dumper
 #if !DEBUG
-    performanceTestCases        dumper
-    performanceJsonNetTestCases dumper
+    performanceTestCases            dumper
+    performanceJsonNetTestCases     dumper
+    performanceFSharpDataTestCases  dumper
 #endif
 
   with

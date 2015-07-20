@@ -11,6 +11,7 @@ The best way of referencing MiniJson is to use [Paket](http://www.nuget.org/pack
 [paket.dependencies](http://fsprojects.github.io/Paket/dependencies-file.html)
 ```
 http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.fs
+http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.Dynamic.fs
 ```
 
 [NuGet](http://www.nuget.org/packages/MiniJson/) can also be used to reference MiniJson

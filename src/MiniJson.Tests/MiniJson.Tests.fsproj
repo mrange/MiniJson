@@ -104,6 +104,14 @@
       <Link>Global_AssemblyInfo.fs</Link>
     </Compile>
     <Compile Include="AssemblyInfo.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/Net/UriUtils.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/Net/Http.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/CommonRuntime/IO.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/CommonRuntime/TextConversions.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonValue.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonValue.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonConversions.fs" />
+    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonExtensions.fs" />
     <None Include="TestCases/charrefs.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -163,10 +171,13 @@
     </None>
     <Compile Include="Test.fs" />
     <Compile Include="TestCases.fs" />
+    <Compile Include="FSharpData.fs" />
     <Compile Include="JsonNet.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
+    <None Include="paket.dependencies" />
+    <None Include="paket.lock" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />

@@ -1,0 +1,7 @@
+github fsharp/FSharp.Data src/Net/UriUtils.fs
+github fsharp/FSharp.Data src/Net/Http.fs
+github fsharp/FSharp.Data src/CommonRuntime/IO.fs
+github fsharp/FSharp.Data src/CommonRuntime/TextConversions.fs
+github fsharp/FSharp.Data src/Json/JsonValue.fs
+github fsharp/FSharp.Data src/Json/JsonConversions.fs
+github fsharp/FSharp.Data src/Json/JsonExtensions.fs
