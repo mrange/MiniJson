@@ -48,6 +48,6 @@ let main argv =
 # TODO
 
 1. Reduce MiniJson platform requirements
+1. Add Fake script
 1. Add MiniJson Strong Name
-1. Improve MiniJson doc
 1. Improve README.md

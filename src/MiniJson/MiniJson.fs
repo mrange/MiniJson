@@ -17,6 +17,18 @@
 /// MiniJson aims to be a minimal yet conforming JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
+///
+/// MiniJson.JsonModule contains functionality to parse and serialize a JSON document
+///
+///
+/// Example:
+/// --------
+///     let jsonText = """[{"id":"123", "name":"Mr. Big", "age":30}, {"id":"123", "name":"Mr. X"}]"""
+///
+///     match parse true jsonText with  // true for full error-info
+///     | Failure (msg, pos)  -> printfn "Failure@%d\n%s" pos msg
+///     | Success json        ->
+///       printfn "Success\n%s" <| toString true json  // true to indent JSON
 #if PUBLIC_MINIJSON
 module MiniJson.JsonModule
 #else
@@ -59,21 +71,21 @@ module internal Tokens =
 
 /// Represents a JSON document
 type Json =
-  // ()         - Represents a JSON null value
+  /// ()         - Represents a JSON null value
   | JsonNull
-  // (value)    - Represents a JSON boolean value
+  /// (value)    - Represents a JSON boolean value
   | JsonBoolean of bool
-  // (value)    - Represents a JSON number value
+  /// (value)    - Represents a JSON number value
   | JsonNumber  of float
-  // (value)    - Represents a JSON string value
+  /// (value)    - Represents a JSON string value
   | JsonString  of string
-  // (values)   - Represents a JSON array value
+  /// (values)   - Represents a JSON array value
   | JsonArray   of Json []
-  // (members)  - Represents a JSON object value
+  /// (members)  - Represents a JSON object value
   | JsonObject  of (string*Json) []
 
   /// Converts a JSON document into a string
-  ///   doIndent  : True to indent
+  ///   @doIndent  : True to indent
   member x.ToString (doIndent : bool) : string =
     let sb = StringBuilder ()
 
@@ -163,8 +175,8 @@ type Json =
     x.ToString false
 
 /// Converts a JSON document into a string
-///   doIndent  : True to indent
-///   json      : The JSON document
+///   @doIndent  : True to indent
+///   @json      : The JSON document
 let toString doIndent (json : Json) : string =
   json.ToString doIndent
 
@@ -636,9 +648,9 @@ type ParseResult =
   | Failure of string*int
 
 /// Attempts to parse a JSON document from a string
-///   fullErrorInfo : True to generate full errorinfo
+///   @fullErrorInfo : True to generate full errorinfo
 ///                   False only shows position (faster)
-///   input         : Input string
+///   @input         : Input string
 let parse (fullErrorInfo : bool) (input : string) : ParseResult =
   let mutable pos = 0
   let v           = JsonParseVisitor ()
