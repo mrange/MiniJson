@@ -542,79 +542,123 @@ module internal Details =
     else
       true
 
+  [<AbstractClass>]
   [<NoEquality>]
   [<NoComparison>]
-  type JsonBuilder =
-    | BuilderRoot    of Json ref
-    | BuilderObject  of string ref*ResizeArray<string*Json>
-    | BuilderArray   of ResizeArray<Json>
+  type BaseJsonValueBuilder() =
+    abstract AddValue     : Json                                                    -> bool
+    abstract SetKey       : string                                                  -> bool
+    abstract CreateValue  : Stack<BaseJsonValueBuilder>*Stack<BaseJsonValueBuilder> -> Json
+
+  let emptyString         = ""
+  let nullValue           = JsonNull
+  let trueValue           = JsonBoolean true
+  let falseValue          = JsonBoolean false
+  let inline boolValue b  = if b then trueValue else falseValue
+
+  [<Sealed>]
+  [<NoEquality>]
+  [<NoComparison>]
+  type RootJsonValueBuilder() =
+    inherit BaseJsonValueBuilder()
+
+    let mutable root = nullValue
+
+    override x.AddValue (json : Json) : bool =
+      root <- json
+      true
+    override x.SetKey (key : string) : bool =
+      Debug.Assert false
+      true
+    override x.CreateValue (freeArrayBuilders, freeObjectBuilders) : Json =
+      let result = root
+      root <- nullValue
+      result
+
+  [<Sealed>]
+  [<NoEquality>]
+  [<NoComparison>]
+  type ArrayJsonValueBuilder() =
+    inherit BaseJsonValueBuilder()
+
+    let mutable values = ResizeArray<Json> DefaultSize
+
+    override x.AddValue (json : Json) : bool =
+      values.Add json
+      true
+    override x.SetKey (key : string) : bool =
+      Debug.Assert false
+      true
+    override x.CreateValue (freeArrayBuilders, freeObjectBuilders) : Json =
+      let result = JsonArray (values.ToArray ())
+      values.Clear ()
+      freeArrayBuilders.Push x
+      result
+
+  [<Sealed>]
+  type ObjectJsonValueBuilder() =
+    inherit BaseJsonValueBuilder()
+
+    let mutable key     = emptyString
+    let mutable members = ResizeArray<string*Json> DefaultSize
+
+    override x.AddValue (json : Json) : bool =
+      members.Add (key, json)
+      true
+    override x.SetKey (k : string) : bool =
+      key <- k
+      true
+    override x.CreateValue (freeArrayBuilders, freeObjectBuilders) : Json =
+      let result = JsonObject (members.ToArray ())
+      key <- emptyString
+      members.Clear ()
+      freeObjectBuilders.Push x
+      result
+
+  let inline setKey (context : Stack<BaseJsonValueBuilder>) (key : string) : bool =
+    let v = context.Peek ()
+    v.SetKey key
+
+  let inline addValue (context : Stack<BaseJsonValueBuilder>) (json : Json) : bool =
+    let v = context.Peek ()
+    v.AddValue json
+
+  let inline popContext (context : Stack<BaseJsonValueBuilder>) freeArrayBuilders freeObjectBuilders : Json =
+    let v = context.Pop ()
+    v.CreateValue (freeArrayBuilders, freeObjectBuilders)
 
   [<Sealed>]
   [<NoEquality>]
   [<NoComparison>]
   type JsonParseVisitor() =
-    let context             = Stack<JsonBuilder> (DefaultSize)
-    let freeObjectBuilders  = Stack<JsonBuilder> (DefaultSize)
-    let freeArrayBuilders   = Stack<JsonBuilder> (DefaultSize)
-
-    let pushObject ()        =
-      if freeObjectBuilders.Count > 0 then
-        context.Push (freeObjectBuilders.Pop ())
-      else
-        context.Push (BuilderObject <| (ref System.String.Empty, ResizeArray<_>(DefaultSize)))
-      true
-
-    let pushArray ()        =
-      if freeArrayBuilders.Count > 0 then
-        context.Push (freeArrayBuilders.Pop ())
-      else
-        context.Push (BuilderArray <| ResizeArray<_>(DefaultSize))
-      true
-
-    let pop ()        =
-      let v = context.Pop ()
-      match v with
-      | BuilderRoot   vr      -> !vr
-      | BuilderObject (rk,ms)  ->
-        let result  = JsonObject (ms.ToArray ())
-        rk := System.String.Empty
-        ms.Clear ()
-        freeObjectBuilders.Push v
-        result
-      | BuilderArray  vs      ->
-        let result  = JsonArray (vs.ToArray ())
-        vs.Clear ()
-        freeArrayBuilders.Push v
-        result
-
-    let setKey k      =
-      match context.Peek () with
-      | BuilderRoot   vr      -> ()
-      | BuilderObject (rk,_)  -> rk := k
-      | BuilderArray  vs      -> ()
-      true
-
-    let add v         =
-      match context.Peek () with
-      | BuilderRoot   vr      -> vr := v
-      | BuilderObject (rk,ms) -> ms.Add (!rk, v)
-      | BuilderArray  vs      -> vs.Add v
-      true
+    let context             = Stack<BaseJsonValueBuilder> DefaultSize
+    let freeArrayBuilders   = Stack<BaseJsonValueBuilder> DefaultSize
+    let freeObjectBuilders  = Stack<BaseJsonValueBuilder> DefaultSize
 
     do
-      context.Push <| (BuilderRoot <| ref JsonNull)
+      context.Push (RootJsonValueBuilder ())
 
     interface IParseVisitor with
-      override x.NullValue    ()      = add <| JsonNull
-      override x.BoolValue    v       = add <| JsonBoolean v
-      override x.NumberValue  v       = add <| JsonNumber v
-      override x.StringValue  v       = add <| JsonString (v.ToString ())
+      override x.NullValue    ()      = addValue context  <| nullValue
+      override x.BoolValue    v       = addValue context  <| boolValue v
+      override x.NumberValue  v       = addValue context  <| JsonNumber v
+      override x.StringValue  v       = addValue context  <| JsonString (v.ToString ())
 
-      override x.ArrayBegin   ()      = pushArray ()
-      override x.ArrayEnd     ()      = add <| pop ()
-      override x.ObjectBegin  ()      = pushObject ()
-      override x.ObjectEnd    ()      = add <| pop ()
-      override x.MemberKey    v       = setKey <| v.ToString ()
+      override x.ArrayBegin   ()      =
+        if freeArrayBuilders.Count > 0 then
+          context.Push (freeArrayBuilders.Pop ())
+        else
+          context.Push (ArrayJsonValueBuilder ())
+        true
+      override x.ArrayEnd     ()      = addValue context  <| popContext context freeArrayBuilders freeObjectBuilders
+      override x.ObjectBegin  ()      =
+        if freeObjectBuilders.Count > 0 then
+          context.Push (freeObjectBuilders.Pop ())
+        else
+          context.Push (ObjectJsonValueBuilder ())
+        true
+      override x.ObjectEnd    ()      = addValue context  <| popContext context freeArrayBuilders freeObjectBuilders
+      override x.MemberKey    v       = setKey context    <| v.ToString ()
 
       override x.ExpectedChar (p,e)   = ()
       override x.Expected     (p,e)   = ()
@@ -622,15 +666,15 @@ module internal Details =
 
     member x.Root ()  =
       Debug.Assert (context.Count = 1)
-      pop ()
+      popContext context freeArrayBuilders freeObjectBuilders
 
   [<Sealed>]
   [<NoEquality>]
   [<NoComparison>]
   type JsonErrorParseVisitor(epos : int) =
-    let expectedChars = ResizeArray<char>   (DefaultSize)
-    let expected      = ResizeArray<string> (DefaultSize)
-    let unexpected    = ResizeArray<string> (DefaultSize)
+    let expectedChars = ResizeArray<char>   DefaultSize
+    let expected      = ResizeArray<string> DefaultSize
+    let unexpected    = ResizeArray<string> DefaultSize
 
     let filter f      = f |> Seq.sort |> Seq.distinct |> Seq.toArray
 
