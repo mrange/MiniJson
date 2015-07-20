@@ -296,6 +296,10 @@ let runPerformanceTestCases
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
+let performanceRatio v = max 1.0 v
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
 let performanceTestCases (dumper : string -> unit) =
   let testCases =
     Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
@@ -307,7 +311,7 @@ let performanceTestCases (dumper : string -> unit) =
     "PERFORMANCE TEST (REFERENCE)"
     ReferenceJsonModule.parse
     200
-    4.0
+    (performanceRatio 4.0)
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -325,7 +329,7 @@ let performanceJsonNetTestCases (dumper : string -> unit) =
     "PERFORMANCE TEST (JSON.NET)"
     MiniJson.Tests.JsonNet.parse
     1000
-    1.1
+    (performanceRatio 1.1)
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
@@ -343,7 +347,7 @@ let performanceFSharpDataTestCases (dumper : string -> unit) =
     "PERFORMANCE TEST (FSHARP.DATA)"
     MiniJson.Tests.FSharpData.dummyParse  // As we don't want to pay overhead of data conversion
     1000
-    1.5
+    (performanceRatio 1.5)
     testCases
     dumper
 // ----------------------------------------------------------------------------------------------
