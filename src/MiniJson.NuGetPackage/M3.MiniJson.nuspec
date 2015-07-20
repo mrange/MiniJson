@@ -26,8 +26,8 @@
     </releaseNotes>
   </metadata>
   <files>
-    <file src="..\MiniJson\bin\Release\MiniJson.dll" target="lib/net452" />
-    <file src="..\MiniJson\bin\Release\MiniJson.pdb" target="lib/net452" />
-    <file src="..\MiniJson\bin\Release\MiniJson.XML" target="lib/net452" />
+    <file src="..\MiniJson\bin\Release\MiniJson.dll" target="lib/net40-client" />
+    <file src="..\MiniJson\bin\Release\MiniJson.pdb" target="lib/net40-client" />
+    <file src="..\MiniJson\bin\Release\MiniJson.XML" target="lib/net40-client" />
   </files>
 </package>

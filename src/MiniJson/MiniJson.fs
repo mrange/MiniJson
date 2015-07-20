@@ -205,6 +205,27 @@ module internal Details =
   [<Literal>]
   let ErrorPrelude = "Failed to parse input as JSON"
 
+  let inline clamp v min max =
+    if v < min then min
+    elif v > max then max
+    else v
+
+  // Min & Max Exponent of float (double)
+  //  https://en.wikipedia.org/wiki/Double-precision_floating-point_format
+
+  [<Literal>]
+  let MinimumPow10  = -1022
+
+  [<Literal>]
+  let MaximumPow10  = 1023
+
+  let Pow10Table =
+    [|
+      for i in MinimumPow10..MaximumPow10 -> pown 10. i
+    |]
+
+  let inline pow10 n = Pow10Table.[clamp (n - MinimumPow10) 0 (Pow10Table.Length - 1)]
+
   let inline neos (s : string) (pos : int) : bool = pos < s.Length
   let inline eos  (s : string) (pos : int) : bool = pos >= s.Length
   let inline ch   (s : string) (pos : int) : char = s.[pos]
@@ -214,7 +235,11 @@ module internal Details =
     v.Unexpected (pos, Tokens.EOS)
     false
 
-  let inline pow n = pown 10.0 n
+  let rec charsContains (i : int) (v : char) (vs : char []) : bool =
+    if i < vs.Length then
+      vs.[i] = v || charsContains (i + 1) v vs
+    else
+      false
 
   let expectedChars (v : IParseVisitor) (p : int) (chars : string) : unit =
     let e = chars.Length - 1
@@ -267,7 +292,8 @@ module internal Details =
     if eos s pos then raiseEos v pos
     else
       let c = ch s pos
-      if cs |> Array.contains c then
+      let l = cs.Length
+      if charsContains 0 c cs then
         r <- c
         adv &pos
         true
@@ -337,7 +363,7 @@ module internal Details =
       let spos        = pos
       let mutable uf  = 0.
       if tryParse_UInt true v s &pos &uf then
-        r <- (float uf) * (pow (spos - pos))
+        r <- (float uf) * (pow10 (spos - pos))
         true
       else
         false
@@ -351,7 +377,6 @@ module internal Details =
       // Ignore as sign is optional
       ignore <| tryParse_AnyOf [|'+';'-'|] v s &pos &sign
       // TODO: Parsing exponent as float seems unnecessary
-      // TODO: Check out of range for exponent
       let mutable uf = 0.0
       if tryParse_UInt true v s &pos &uf then
         let inline sign v = if sign = '-' then -v else v
@@ -376,7 +401,7 @@ module internal Details =
       && tryParse_Exponent v s &pos &e
 
     if result then
-      v.NumberValue (sign ((i + f) * (pow e)))
+      v.NumberValue (sign ((i + f) * (pow10 e)))
     else
       false
 
