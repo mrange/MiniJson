@@ -76,9 +76,9 @@ type Path         = Json*(JsonQuery*Json) list
 type InvalidPath  = JsonQueryError list*Json*(JsonQuery*Json) list
 
 module internal Details =
-    let inline ch   (sb : StringBuilder) (c : char)    : unit = ignore <| sb.Append c
-    let inline str  (sb : StringBuilder) (s : string)  : unit = ignore <| sb.Append s
-    let inline ii   (sb : StringBuilder) (i : int)     : unit = ignore <| sb.Append i
+    let inline ch   (sb : StringBuilder, c : char)    : unit = ignore <| sb.Append c
+    let inline str  (sb : StringBuilder, s : string)  : unit = ignore <| sb.Append s
+    let inline ii   (sb : StringBuilder, i : int)     : unit = ignore <| sb.Append i
 
     let rec appendParents (sb : StringBuilder) = function
       | []    -> ()
@@ -86,8 +86,8 @@ module internal Details =
         // Tail-recursiveness not so important here as we expect only a few parents
         appendParents sb ps
         match p with
-        | (QueryProperty name, _) -> ch sb '.'; str sb name
-        | (QueryIndexOf i, _)     -> str sb ".["; ii sb i; ch sb ']'
+        | (QueryProperty name, _) -> ch (sb, '.'); str (sb, name)
+        | (QueryIndexOf i, _)     -> str (sb, ".["); ii (sb, i); ch (sb, ']')
 
     let rec appendErrors (sb : StringBuilder)  = function
       | []    -> ()
@@ -96,9 +96,9 @@ module internal Details =
         appendErrors sb es
         match e with
         | ErrorNotObject name
-        | ErrorUnknownProperty name -> ch sb '!'; str sb name
+        | ErrorUnknownProperty name -> ch (sb, '!'); str (sb, name)
         | ErrorNotIndexable i
-        | ErrorIndexOutBounds i     -> str sb "!["; ii sb i; ch sb ']'
+        | ErrorIndexOutBounds i     -> str (sb, "!["); ii (sb, i); ch (sb, ']')
 
 open Details
 
