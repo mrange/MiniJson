@@ -9,10 +9,11 @@
     <OutputType>Exe</OutputType>
     <RootNamespace>MiniJson.NuGet</RootNamespace>
     <AssemblyName>MiniJson.NuGet</AssemblyName>
-    <TargetFrameworkVersion>v4.5.2</TargetFrameworkVersion>
+    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-    <TargetFSharpCoreVersion>4.4.0.0</TargetFSharpCoreVersion>
+    <TargetFSharpCoreVersion>4.3.0.0</TargetFSharpCoreVersion>
     <Name>MiniJson.NuGet</Name>
+    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -110,7 +111,7 @@
   </ItemGroup>
   <ItemGroup>
     <Reference Include="MiniJson">
-      <HintPath>..\packages\M3.MiniJson.2.1.1\lib\net452\MiniJson.dll</HintPath>
+      <HintPath>..\packages\M3.MiniJson.2.1.2\lib\net40-client\MiniJson.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="mscorlib" />

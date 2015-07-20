@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata schemaVersion="2">
     <id>M3.MiniJson</id>
-    <version>2.1.1</version>
+    <version>2.1.2</version>
     <title>MiniJson</title>
     <authors>Mårten Rånge</authors>
     <owners>Mårten Rånge</owners>
@@ -23,6 +23,7 @@
       * 2.0.1   - Documentation update
       * 2.1.0   - Improved performance (breaking change for users of IParseVisitor)
       * 2.1.1   - Improved code documentation substantially
+      * 2.1.2   - MiniJson now requires net40-client (down from net452)
     </releaseNotes>
   </metadata>
   <files>
