@@ -32,8 +32,8 @@ PM> Install-Package M3.MiniJson
 
 Using MiniJson is straight-forward
 ```fsharp
-open Internal.MiniJson.JsonModule
-open Internal.MiniJson.DynamicJsonModule
+open MiniJson.JsonModule
+open MiniJson.DynamicJsonModule
 
 [<EntryPoint>]
 let main argv =
