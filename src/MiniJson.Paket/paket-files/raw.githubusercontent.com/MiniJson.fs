@@ -17,6 +17,18 @@
 /// MiniJson aims to be a minimal yet conforming JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
+///
+/// MiniJson.JsonModule contains functionality to parse and serialize a JSON document
+///
+///
+/// Example:
+/// --------
+///     let jsonText = """[{"id":"123", "name":"Mr. Big", "age":30}, {"id":"123", "name":"Mr. X"}]"""
+///
+///     match parse true jsonText with  // true for full error-info
+///     | Failure (msg, pos)  -> printfn "Failure@%d\n%s" pos msg
+///     | Success json        ->
+///       printfn "Success\n%s" <| toString true json  // true to indent JSON
 #if PUBLIC_MINIJSON
 module MiniJson.JsonModule
 #else
@@ -57,14 +69,23 @@ module internal Tokens =
   [<Literal>]
   let NewLine   = "NEWLINE"
 
+/// Represents a JSON document
 type Json =
+  /// ()         - Represents a JSON null value
   | JsonNull
+  /// (value)    - Represents a JSON boolean value
   | JsonBoolean of bool
+  /// (value)    - Represents a JSON number value
   | JsonNumber  of float
+  /// (value)    - Represents a JSON string value
   | JsonString  of string
+  /// (values)   - Represents a JSON array value
   | JsonArray   of Json []
+  /// (members)  - Represents a JSON object value
   | JsonObject  of (string*Json) []
 
+  /// Converts a JSON document into a string
+  ///   @doIndent  : True to indent
   member x.ToString (doIndent : bool) : string =
     let sb = StringBuilder ()
 
@@ -149,12 +170,18 @@ type Json =
 
     sb.ToString ()
 
+  /// Converts a JSON document into a string
   override x.ToString () : string =
     x.ToString false
 
+/// Converts a JSON document into a string
+///   @doIndent  : True to indent
+///   @json      : The JSON document
 let toString doIndent (json : Json) : string =
   json.ToString doIndent
 
+/// IParseVisitor is implemented by users wanting to parse
+///   a JSON document into a data structure other than MiniJson.Json
 type IParseVisitor =
   interface
     abstract NullValue    : unit          -> bool
@@ -178,6 +205,27 @@ module internal Details =
   [<Literal>]
   let ErrorPrelude = "Failed to parse input as JSON"
 
+  let inline clamp v min max =
+    if v < min then min
+    elif v > max then max
+    else v
+
+  // Min & Max Exponent of float (double)
+  //  https://en.wikipedia.org/wiki/Double-precision_floating-point_format
+
+  [<Literal>]
+  let MinimumPow10  = -1022
+
+  [<Literal>]
+  let MaximumPow10  = 1023
+
+  let Pow10Table =
+    [|
+      for i in MinimumPow10..MaximumPow10 -> pown 10. i
+    |]
+
+  let inline pow10 n = Pow10Table.[clamp (n - MinimumPow10) 0 (Pow10Table.Length - 1)]
+
   let inline neos (s : string) (pos : int) : bool = pos < s.Length
   let inline eos  (s : string) (pos : int) : bool = pos >= s.Length
   let inline ch   (s : string) (pos : int) : char = s.[pos]
@@ -187,7 +235,11 @@ module internal Details =
     v.Unexpected (pos, Tokens.EOS)
     false
 
-  let inline pow n = pown 10.0 n
+  let rec charsContains (i : int) (v : char) (vs : char []) : bool =
+    if i < vs.Length then
+      vs.[i] = v || charsContains (i + 1) v vs
+    else
+      false
 
   let expectedChars (v : IParseVisitor) (p : int) (chars : string) : unit =
     let e = chars.Length - 1
@@ -240,7 +292,8 @@ module internal Details =
     if eos s pos then raiseEos v pos
     else
       let c = ch s pos
-      if cs |> Array.contains c then
+      let l = cs.Length
+      if charsContains 0 c cs then
         r <- c
         adv &pos
         true
@@ -310,7 +363,7 @@ module internal Details =
       let spos        = pos
       let mutable uf  = 0.
       if tryParse_UInt true v s &pos &uf then
-        r <- (float uf) * (pow (spos - pos))
+        r <- (float uf) * (pow10 (spos - pos))
         true
       else
         false
@@ -324,7 +377,6 @@ module internal Details =
       // Ignore as sign is optional
       ignore <| tryParse_AnyOf [|'+';'-'|] v s &pos &sign
       // TODO: Parsing exponent as float seems unnecessary
-      // TODO: Check out of range for exponent
       let mutable uf = 0.0
       if tryParse_UInt true v s &pos &uf then
         let inline sign v = if sign = '-' then -v else v
@@ -349,7 +401,7 @@ module internal Details =
       && tryParse_Exponent v s &pos &e
 
     if result then
-      v.NumberValue (sign ((i + f) * (pow e)))
+      v.NumberValue (sign ((i + f) * (pow10 e)))
     else
       false
 
@@ -604,21 +656,31 @@ module internal Details =
 
 open Details
 
-let tryParse (v : IParseVisitor) (s : string) (pos : byref<int>) : bool =
+/// Attempts to parse a JSON document from a string
+///   visitor : Parser visitor object
+///   input   : Input string
+let tryParse (visitor : IParseVisitor) (input : string) (pos : byref<int>) : bool =
   let sb = StringBuilder DefaultSize
-  consume_WhiteSpace s &pos
-  && tryParse_RootValue sb v s &pos
-  && tryParse_Eos v s &pos
+  consume_WhiteSpace                input &pos
+  && tryParse_RootValue sb  visitor input &pos
+  && tryParse_Eos           visitor input &pos
 
+/// Returned by parse function
 type ParseResult =
+  /// (json) - Holds the parsed JSON document
   | Success of Json
+  /// (message, pos) - Holds the error description and position of failure
   | Failure of string*int
 
-let parse (fullErrorInfo : bool) (s : string) : ParseResult =
+/// Attempts to parse a JSON document from a string
+///   @fullErrorInfo : True to generate full errorinfo
+///                   False only shows position (faster)
+///   @input         : Input string
+let parse (fullErrorInfo : bool) (input : string) : ParseResult =
   let mutable pos = 0
   let v           = JsonParseVisitor ()
 
-  match tryParse (upcast v) s &pos, fullErrorInfo with
+  match tryParse (upcast v) input &pos, fullErrorInfo with
   | true  , _     ->
     Success (v.Root ())
   | false , false ->
@@ -627,7 +689,7 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
     let mutable epos  = 0
     let ev            = JsonErrorParseVisitor (pos)
 
-    ignore <| tryParse (upcast ev) s &epos
+    ignore <| tryParse (upcast ev) input &epos
 
     let sb = StringBuilder ()
     let inline str  (s : string)  = ignore <| sb.Append s
@@ -659,21 +721,21 @@ let parse (fullErrorInfo : bool) (s : string) : ParseResult =
 
     let windowSize = 60
     let windowBegin,windowEnd,windowPos =
-      if s.Length < windowSize then
-        0, s.Length - 1, pos
+      if input.Length < windowSize then
+        0, input.Length - 1, pos
       else
         let hs  = windowSize / 2
         let b   = pos - hs
         let e   = pos + hs
         let ab  = max 0 b
-        let ae  = min (s.Length - 1) (e + ab - b)
+        let ae  = min (input.Length - 1) (e + ab - b)
         let ap  = pos - ab
         ab, ae, ap
 
     strl ErrorPrelude
     for i = windowBegin to windowEnd do
       let c =
-        match s.[i] with
+        match input.[i] with
         | '\n'
         | '\r'  -> ' '
         | c     -> c

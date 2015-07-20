@@ -17,6 +17,21 @@
 /// MiniJson aims to be a minimal yet conforming JSON parser with reasonable performance and decent error reporting
 ///   JSON Specification: http://json.org/
 ///   JSON Lint         : http://jsonlint.com/
+///
+/// MiniJson.DynamicJsonModule contains functionality query a JSON document using
+/// op_Dynamic ( ? ) in F#
+///
+///
+/// Example:
+/// --------
+///   let root = json.Query
+///
+///   for i = 0 to root.Length - 1 do
+///     let v     = root.[i]
+///     let id    = v?id.AsString
+///     let name  = v?name.AsString
+///     let age   = v?age.AsFloat
+///     printfn "Record - %d: id:%s, name:%s, age:%f" i id name age
 #if PUBLIC_MINIJSON
 module MiniJson.DynamicJsonModule
 #else
@@ -36,17 +51,28 @@ open System.Text
 
 open JsonModule
 
+/// Represents a valid JSON element query
 type JsonQuery =
+  /// (name)  - Represents a valid JSON element object property query
   | QueryProperty of string
+  /// (index) - Represents a valid JSON element array indexing query
   | QueryIndexOf  of int
 
+/// Represents an invalid JSON element query
 type JsonQueryError =
+  /// (name)  - Represents a invalid JSON element object property query as the referenced element wasn't an object
   | ErrorNotObject        of string
+  /// (name)  - Represents a invalid JSON element array indexing query as the referenced element wasn't an array
   | ErrorNotIndexable     of int
+  /// (name)  - Represents a invalid JSON element object property query as the property didn't exist
   | ErrorUnknownProperty  of string
+  /// (name)  - Represents a invalid JSON element array indexing query as the index was out of bounds
   | ErrorIndexOutBounds   of int
 
+/// (json, parents) - Represents a valid Path to a JSON element
 type Path         = Json*(JsonQuery*Json) list
+
+/// (errors, json, parents) - Represents an invalid Path to a JSON element
 type InvalidPath  = JsonQueryError list*Json*(JsonQuery*Json) list
 
 module internal Details =
@@ -78,14 +104,22 @@ open Details
 
 [<NoEquality>]
 [<NoComparison>]
+/// Represents a JSON scalar (null, bool, number, string or error)
 type JsonScalar =
+  /// (json, parents)         - Represents a null scalar
   | ScalarNull        of Path
+  /// (json, parents)         - Represents a bool scalar
   | ScalarBoolean     of Path*bool
+  /// (json, parents)         - Represents a number (float) scalar
   | ScalarNumber      of Path*float
+  /// (json, parents)         - Represents a string scalar
   | ScalarString      of Path*string
+  /// (json, parents)         - An errors representing that the referenced element is not a scalar
   | ScalarNotScalar   of Path
+  /// (json, parents)         - An errors representing that the referenced element doesn't exist
   | ScalarInvalidPath of InvalidPath
 
+  /// Returns true if it's an invalid scalar element
   member x.IsError : bool =
     match x with
     | ScalarNull        _
@@ -95,6 +129,8 @@ type JsonScalar =
     | ScalarNotScalar   _
     | ScalarInvalidPath _ -> true
 
+  /// Returns true if it's a valid scalar element,
+  ///   if the scalar element couldn't be converted successfully returns false.
   member x.HasValue : bool =
     match x with
     | ScalarNull        _ -> false
@@ -104,6 +140,8 @@ type JsonScalar =
     | ScalarNotScalar   _
     | ScalarInvalidPath _ -> false
 
+  /// Returns a boolean representation of the scalar element,
+  ///   if the scalar element couldn't be converted successfully returns false.
   member x.AsBool : bool =
     match x with
     | ScalarNull        _     -> false
@@ -113,15 +151,23 @@ type JsonScalar =
     | ScalarNotScalar   _
     | ScalarInvalidPath _     -> false
 
+  /// Returns a float representation of the scalar element,
+  ///   if the scalar element couldn't be converted successfully returns 0.0.
   member x.AsFloat : float =
     x.ConvertToFloat 0.
 
+  /// Returns a string representation of the scalar element.
+  ///   Null values and errors are represented as ""
   member x.AsString : string =
-    x.ToString false
+    x.AsStringImpl false
 
+  /// Returns the expanded string representation of the scalar element.
+  ///   Expanded means null values are represented as 'null' and full error error infos are generated for errors
   member x.AsExpandedString : string =
-    x.ToString true
+    x.AsStringImpl true
 
+  /// Returns a float representation of the scalar element.
+  ///   This allows the user to specify the value to return if the scalar element couldn't be converted successfully
   member x.ConvertToFloat (defaultTo : float) : float =
     match x with
     | ScalarNull        _     -> 0.
@@ -133,7 +179,7 @@ type JsonScalar =
     | ScalarNotScalar   _
     | ScalarInvalidPath _     -> defaultTo
 
-  member x.ToString (expand : bool) : string =
+  member internal x.AsStringImpl (expand : bool) : string =
     match x with
     | ScalarNull      _             -> if expand then "null" else ""
     | ScalarBoolean   (_,b)         -> if b then "true" else "false"
@@ -158,12 +204,16 @@ type JsonScalar =
         ""
 
   override x.ToString () : string =
-      x.ToString true
+      x.AsStringImpl true
 
+/// Represents a path to a JSON element
 type JsonPath =
+  /// (json, parents)         - Holds the current json element and its parents
   | PathOk    of Path
+  /// (errors, json, parents) - Holds the invalid path elements, the last valid json element and its parents
   | PathError of InvalidPath
 
+  /// Evaluates the path producing the referenced scalar element (scalar meaning null, bool, number, string or error)
   member x.Eval : JsonScalar =
     match x with
     | PathOk path ->
@@ -176,6 +226,8 @@ type JsonPath =
       | _             -> ScalarNotScalar  path
     | PathError invalidPath -> ScalarInvalidPath invalidPath
 
+  /// Returns the Length of the referenced array element,
+  ///   if it's not an array returns 0
   member x.Length : int =
     match x with
     | PathOk (json, _) ->
@@ -188,6 +240,8 @@ type JsonPath =
       | JsonArray   vs  -> vs.Length
     | PathError _       -> 0
 
+  /// Returns a path to the element at the index of the referenced array element,
+  ///   if it's not an array or out of bounds returns a PathError
   member x.Item (i : int) : JsonPath =
     match x with
     | PathOk (json, parents) ->
@@ -207,6 +261,8 @@ type JsonPath =
     | PathError (errors, json, parents) ->
       PathError ((ErrorNotIndexable i)::errors, json, parents)
 
+  /// Returns a path to the named element of the referenced object element,
+  ///   if it's not an object or named element doesn't exists returns a PathError
   member x.Get (name : string) : JsonPath =
     match x with
     | PathOk (json, parents) ->
@@ -231,43 +287,63 @@ type JsonPath =
     | PathError (errors, json, parents) ->
       PathError ((ErrorNotObject name)::errors, json, parents)
 
+  /// Returns true if the path elements references a valid scalar element,
+  ///   if the referenced scalar element couldn't be converted successfully returns false.
   member x.HasValue : bool =
     x.Eval.HasValue
 
+  /// Returns a boolean representation of the referenced scalar element,
+  ///   if the referenced scalar element couldn't be converted successfully returns false.
   member x.AsBool : bool =
     x.Eval.AsBool
 
+  /// Returns a float representation of the referenced scalar element,
+  ///   if the referenced scalar element couldn't be converted successfully returns 0.0.
   member x.AsFloat : float =
     x.Eval.AsFloat
 
+  /// Returns a string representation of the referenced scalar element,
+  ///   null values and errors are represented as "".
   member x.AsString : string =
     x.Eval.AsString
 
+  /// Returns the expanded string representation of the referenced scalar element.
+  ///   Expanded means null values are represented as 'null' and full error error infos are generated for errors.
   member x.AsExpandedString : string =
     x.Eval.AsExpandedString
 
+  /// Returns a float representation of the referenced scalar element.
+  ///   This allows the user to specify the value to return if the referenced scalar element couldn't be converted successfully.
+  ///   @defaultTo  - The float to default to if the referenced scalar element couldn't be converted successfully.
   member x.ConvertToFloat (defaultTo : float) : float =
     x.Eval.ConvertToFloat defaultTo
 
   override x.ToString () : string =
     match x with
     | PathOk (_, parents) ->
-      let sb = StringBuilder ("Path: root")
+      let sb = StringBuilder ("PathOk: root")
       appendParents sb parents
       sb.ToString ()
     | PathError (errors, _, parents) ->
-      let sb = StringBuilder ("Path: root")
+      let sb = StringBuilder ("PathError: root")
       appendParents sb parents
       appendErrors  sb errors
       sb.ToString ()
 
+  /// Returns a path to the named element of the referenced object element,
+  ///   if it's not an object or named element doesn't exists returns a PathError
   static member ( ? ) (path : JsonPath, name : string) : JsonPath =
     path.Get name
 
+  /// Evaluates the path producing the referenced scalar element (scalar meaning null, bool, number, string or error)
   static member ( !! ) (path : JsonPath) : JsonScalar =
     path.Eval
 
+/// Creates a JsonPath object from a JSON document
+///   @json - A JSON document
 let inline makePath (json : Json) = PathOk (json, [])
 
 type Json with
+
+  /// Creates a JsonPath object from a JSON document
   member x.Query : JsonPath = makePath x
