@@ -252,19 +252,29 @@ let filterForPerformance (_,name : string ,tc : string) =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let runPerformanceTestCases
+type PerformanceData = string*int*int*int*int*int64
+
+let collectPerformanceData
   (category       : string                  )
-  (referenceParser: string -> ParseResult   )
+  (parser         : string -> ParseResult   )
   (iterations     : int                     )
-  (expected_ratio : float                   )
   (testCases      : (bool*string*string) [] )
-  (dumper         : string -> unit          ) : unit =
+  (dumper         : string -> unit          ) : PerformanceData [] =
+
+  infof "Collecting performance data for %d testcases (%s)..." testCases.Length category
+
   let sw = Stopwatch ()
 
-  let timeIt n (a : unit -> 'T) : int64*'T =
+  let timeIt n (a : unit -> 'T) : int64*int*int*int*'T =
     sw.Reset ()
 
     let result = a ()
+
+    GC.Collect (2, GCCollectionMode.Forced, true)
+
+    let b0  = GC.CollectionCount 0
+    let b1  = GC.CollectionCount 1
+    let b2  = GC.CollectionCount 2
 
     sw.Start ()
 
@@ -273,83 +283,121 @@ let runPerformanceTestCases
 
     sw.Stop ()
 
-    sw.ElapsedMilliseconds, result
+    let e0  = GC.CollectionCount 0
+    let e1  = GC.CollectionCount 1
+    let e2  = GC.CollectionCount 2
 
-  for positive, name, testCase in testCases do
-    dumper <| sprintf "---==> %s <==---" category
-    dumper name
-    dumper (if positive then "positive" else "negative")
-    dumper testCase
 
-    let reference , _ = timeIt iterations (fun _ -> referenceParser testCase)
-    let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
+    sw.ElapsedMilliseconds, e0 - b0, e1 - b1, e2 - b2, result
 
-    let actual_ratio  = float reference / max (float actual) 1.
+  [|
+    for positive, name, testCase in testCases do
+      dumper <| sprintf "---==> PERFORMANCE (%s) <==---" category
+      dumper name
+      dumper (if positive then "positive" else "negative")
+      dumper testCase
 
-    let ref           = float reference / float iterations
-    let act           = float actual / float iterations
+      let time, cc0, cc1, cc2 , _ = timeIt iterations (fun _ -> parser testCase)
 
-    check_lt expected_ratio     actual_ratio            name
-    check_gt ref                (expected_ratio * act)  name
-
-    dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
+      dumper <| sprintf "Iterations: %d, cc0: %d, cc1: %d, cc2: %d, time: %d ms" iterations cc0 cc1 cc2 time
+      yield name, iterations, cc0, cc1, cc2, time
+  |]
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let performanceRatio v = max 1.0 v
+let performanceRatio v = max 10.0 v
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
 let performanceTestCases (dumper : string -> unit) =
-  let testCases =
+  let allTtestCases =
     Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
-    |> Array.filter filterForPerformance
 
-  infof "Running %d performance testcases (REFERENCE)..." testCases.Length
+  let miniJsonData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForPerformance
 
-  runPerformanceTestCases
-    "PERFORMANCE TEST (REFERENCE)"
-    ReferenceJsonModule.parse
-    200
-    (performanceRatio 4.0)
-    testCases
-    dumper
-// ----------------------------------------------------------------------------------------------
+    collectPerformanceData
+      "MINIJSON"
+      (parse false)
+      1000
+      testCases
+      dumper
 
-// ----------------------------------------------------------------------------------------------
-let performanceJsonNetTestCases (dumper : string -> unit) =
-  let testCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
-    |> Array.filter filterForJsonNet
-    |> Array.filter filterForPerformance
+  let expectedRatio v = max 1.0 v
 
-  infof "Running %d performance testcases (JSON.NET)..." testCases.Length
+  let compareResults
+    (name             : string            )
+    (performanceRatio : float             )
+    (data             : PerformanceData[] ) =
+    infof "Comparing performance data between MINIJSON and %s" name
 
-  runPerformanceTestCases
-    "PERFORMANCE TEST (JSON.NET)"
-    MiniJson.Tests.JsonNet.parse
-    1000
-    (performanceRatio 1.1)
-    testCases
-    dumper
-// ----------------------------------------------------------------------------------------------
+    dumper <| sprintf "---==> PERFORMANCE COMPARISON (MINIJSON - %s) <==---" name
 
-// ----------------------------------------------------------------------------------------------
-let performanceFSharpDataTestCases (dumper : string -> unit) =
-  let testCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
-    |> Array.filter filterForFSharpData
-    |> Array.filter filterForPerformance
+    for testCase0, iterations0, cc00, cc10, cc20, time0 in miniJsonData do
+      match data |> Array.tryFind (fun (testCase1, _, _, _, _, _) -> testCase0 = testCase1) with
+      | None -> ()
+      | Some (_, iterations1, cc01, cc11, cc21, time1) ->
+        let adjustedTime0   = float time0 / float iterations0
+        let adjustedTime1   = float time1 / float iterations1
 
-  infof "Running %d performance testcases (FSHARP.DATA)..." testCases.Length
+        let ratio           = adjustedTime1 / adjustedTime0
 
-  runPerformanceTestCases
-    "PERFORMANCE TEST (FSHARP.DATA)"
-    MiniJson.Tests.FSharpData.dummyParse  // As we don't want to pay overhead of data conversion
-    1000
-    (performanceRatio 1.5)
-    testCases
-    dumper
+        dumper <| sprintf
+          "TestCase: %s - cc0: %d,%d, cc1: %d,%d, cc2: %d,%d, time: %d,%d ms"
+          testCase0
+          cc00  cc01
+          cc10  cc11
+          cc20  cc21
+          time0 time1
+
+        check_lt (expectedRatio performanceRatio)   ratio         testCase0
+        check_gt adjustedTime1                      adjustedTime0 testCase0
+
+  let referenceData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForPerformance
+
+    collectPerformanceData
+      "REFERENCE"
+      ReferenceJsonModule.parse
+      200
+      testCases
+      dumper
+
+  compareResults "REFERENCE" 3.5 referenceData
+
+  let jsonNetData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForJsonNet
+      |> Array.filter filterForPerformance
+
+    collectPerformanceData
+      "JSON.NET"
+      MiniJson.Tests.JsonNet.parse
+      1000
+      testCases
+      dumper
+
+  compareResults "JSON.NET" 1.1 jsonNetData
+
+  let fsharpDataData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForFSharpData
+      |> Array.filter filterForPerformance
+
+    collectPerformanceData
+      "FSHARP.DATA"
+      MiniJson.Tests.FSharpData.dummyParse
+      1000
+      testCases
+      dumper
+
+  compareResults "FSHARP.DATA" 1.5 fsharpDataData
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
@@ -560,8 +608,6 @@ let main argv =
     pathTestCases                   dumper
 #if !DEBUG
     performanceTestCases            dumper
-    performanceJsonNetTestCases     dumper
-    performanceFSharpDataTestCases  dumper
 #endif
 
   with
