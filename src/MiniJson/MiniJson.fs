@@ -69,10 +69,6 @@ module internal Tokens =
   [<Literal>]
   let NewLine   = "NEWLINE"
 
-  let Exponent  = [|'e';'E'|]
-
-  let Sign      = [|'+';'-'|]
-
 /// Represents a JSON document
 type Json =
   /// ()         - Represents a JSON null value
@@ -247,10 +243,11 @@ module internal Details =
     else
       false
 
-  let expectedChars (v : IParseVisitor) (p : int) (chars : string) : unit =
-    let e = chars.Length - 1
-    for i = 0 to e do
-      v.ExpectedChar (p, chars.[i])
+  type IParseVisitor with
+    member x.ExpectedChars (p : int, chars : string) : unit =
+      let e = chars.Length - 1
+      for i = 0 to e do
+        x.ExpectedChar (p, chars.[i])
 
   type JsonParser(s : string, v : IParseVisitor) =
     let sb          = StringBuilder DefaultSize
@@ -272,11 +269,11 @@ module internal Details =
       v.Expected      (pos, Tokens.True )
       v.Expected      (pos, Tokens.False)
       v.Expected      (pos, Tokens.Digit)
-      expectedChars v pos "\"{[-"
+      v.ExpectedChars (pos, "\"{[-")
       false
 
     member x.raise_RootValue () : bool =
-      expectedChars v pos "{["
+      v.ExpectedChars (pos, "{[")
       false
 
     member inline x.consume_WhiteSpace () : bool =
@@ -299,21 +296,20 @@ module internal Details =
 
 // inline causes DEBUG mode to crash (because F# creates tuples of pointers
 #if DEBUG
-    member x.tryParse_AnyOf (cs : char [], r : char byref) : bool =
+    member x.tryParse_AnyOf2 (first : char, second : char, r : char byref) : bool =
 #else
-    member inline x.tryParse_AnyOf (cs : char [], r : char byref) : bool =
+    member inline x.tryParse_AnyOf2 (cs : char [], r : char byref) : bool =
 #endif
       if x.eos then x.raise_Eos ()
       else
         let c = x.ch
-        let l = cs.Length
-        if charsContains 0 c cs then
+        if c = first || c = second then
           r <- c
           x.adv ()
           true
         else
-          for c in cs do
-            v.ExpectedChar (pos, c)
+          v.ExpectedChar (pos, first)
+          v.ExpectedChar (pos, second)
           false
 
     member inline x.tryConsume_Token (tk : string) : bool =
@@ -386,10 +382,10 @@ module internal Details =
 
     member x.tryParse_Exponent (r : int byref) : bool =
       let mutable exp = ' '
-      if x.tryParse_AnyOf (Tokens.Exponent, &exp) then
+      if x.tryParse_AnyOf2 ('e', 'E', &exp) then
         let mutable sign = '+'
         // Ignore as sign is optional
-        ignore <| x.tryParse_AnyOf (Tokens.Sign, &sign)
+        ignore <| x.tryParse_AnyOf2 ('+', '-', &sign)
         // TODO: Parsing exponent as float seems unnecessary
         let mutable ue = 0.0
         if x.tryParse_UInt (true, &ue) then
@@ -462,7 +458,7 @@ module internal Details =
                 x.adv ()
                 x.tryParse_UnicodeChar (4, 0)
               | _ ->
-                expectedChars v pos "\"\\/bfnrtu"
+                v.ExpectedChars (pos, "\"\\/bfnrtu")
                 false
             result && x.tryParse_Chars ()
         | _           ->
@@ -720,7 +716,7 @@ open Details
 /// Attempts to parse a JSON document from a string
 ///   visitor : Parser visitor object
 ///   input   : Input string
-let tryParse (visitor : IParseVisitor) (input : string) (pos : byref<int>) : bool =
+let tryParse (visitor : IParseVisitor) (input : string) (pos : int byref) : bool =
   let jp = JsonParser (input, visitor)
   let result =
     jp.consume_WhiteSpace     ()
