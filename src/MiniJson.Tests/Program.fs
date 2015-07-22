@@ -19,6 +19,7 @@ open System
 open System.Diagnostics
 open System.Globalization
 open System.IO
+open System.Runtime.InteropServices
 open System.Text
 
 open MiniJson
@@ -252,7 +253,14 @@ let filterForPerformance (_,name : string ,tc : string) =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-type PerformanceData = string*int*int*int*int*int64
+type PerformanceData = string*int*int*int*int*int64*uint64
+
+module InteropWithNative =
+  [<DllImport("kernel32.dll")>]
+  extern IntPtr GetCurrentThread ();
+
+  [<DllImport("kernel32.dll")>]
+  extern bool QueryThreadCycleTime (IntPtr ThreadHandle, uint64 * CycleTime);
 
 let collectPerformanceData
   (category       : string                  )
@@ -265,12 +273,14 @@ let collectPerformanceData
 
   let sw = Stopwatch ()
 
-  let timeIt n (a : unit -> 'T) : int64*int*int*int*'T =
+  let timeIt n (a : unit -> 'T) : int64*uint64*int*int*int*'T =
     sw.Reset ()
 
     let result = a ()
 
     GC.Collect (2, GCCollectionMode.Forced, true)
+
+    let ct  = InteropWithNative.GetCurrentThread ()
 
     let b0  = GC.CollectionCount 0
     let b1  = GC.CollectionCount 1
@@ -278,8 +288,14 @@ let collectPerformanceData
 
     sw.Start ()
 
+    let mutable bct = 0UL
+    let mutable ect = 0UL
+    ignore <| InteropWithNative.QueryThreadCycleTime (ct, &&bct)
+
     for i = 1 to n do
       ignore <| a ()
+
+    ignore <| InteropWithNative.QueryThreadCycleTime (ct, &&ect)
 
     sw.Stop ()
 
@@ -287,8 +303,7 @@ let collectPerformanceData
     let e1  = GC.CollectionCount 1
     let e2  = GC.CollectionCount 2
 
-
-    sw.ElapsedMilliseconds, e0 - b0, e1 - b1, e2 - b2, result
+    sw.ElapsedMilliseconds, ect - bct , e0 - b0, e1 - b1, e2 - b2, result
 
   [|
     for positive, name, testCase in testCases do
@@ -297,10 +312,9 @@ let collectPerformanceData
       dumper (if positive then "positive" else "negative")
       dumper testCase
 
-      let time, cc0, cc1, cc2 , _ = timeIt iterations (fun _ -> parser testCase)
-
+      let time, ct, cc0, cc1, cc2 , _ = timeIt iterations (fun _ -> parser testCase)
       dumper <| sprintf "Iterations: %d, cc0: %d, cc1: %d, cc2: %d, time: %d ms" iterations cc0 cc1 cc2 time
-      yield name, iterations, cc0, cc1, cc2, time
+      yield name, iterations, cc0, cc1, cc2, time, ct
   |]
 // ----------------------------------------------------------------------------------------------
 
@@ -321,7 +335,7 @@ let performanceTestCases (dumper : string -> unit) =
       testCases
       dumper
 
-  let expectedRatio v = max 10.0 v
+  let expectedRatio v = max 1.0 v
 
   let compareResults
     (name             : string            )
@@ -331,24 +345,31 @@ let performanceTestCases (dumper : string -> unit) =
 
     dumper <| sprintf "---==> PERFORMANCE COMPARISON (MINIJSON - %s) <==---" name
 
-    for testCase0, iterations0, cc00, cc10, cc20, time0 in miniJsonData do
-      match data |> Array.tryFind (fun (testCase1, _, _, _, _, _) -> testCase0 = testCase1) with
+    for testCase0, iterations0, cc00, cc10, cc20, time0, ct0 in miniJsonData do
+      match data |> Array.tryFind (fun (testCase1, _, _, _, _, _, _) -> testCase0 = testCase1) with
       | None -> ()
-      | Some (_, iterations1, cc01, cc11, cc21, time1) ->
-        let adjustedTime0   = float time0 / float iterations0
-        let adjustedTime1   = float time1 / float iterations1
+      | Some (_, iterations1, cc01, cc11, cc21, time1, ct1) ->
+        let adjustedTime0       = float time0 / float iterations0
+        let adjustedTime1       = float time1 / float iterations1
 
-        let ratio           = adjustedTime1 / adjustedTime0
+        let adjustedCycleTime0  = float ct0   / float iterations0
+        let adjustedCycleTime1  = float ct1   / float iterations1
+
+        let ratio               = adjustedTime1       / adjustedTime0
+        let ctratio             = adjustedCycleTime1  / adjustedCycleTime0
 
         dumper <| sprintf
-          "TestCase: %s - cc0: %d,%d, cc1: %d,%d, cc2: %d,%d, time: %d,%d ms"
+          "TestCase: %s - iterations: %d, cc0: %d,%d, cc1: %d,%d, cc2: %d,%d, time: %d,%d ms, cycleTime: %d, %d"
           testCase0
+          iterations1
           cc00  cc01
           cc10  cc11
           cc20  cc21
           time0 time1
+          ct0   ct1
 
         check_lt (expectedRatio performanceRatio)   ratio         testCase0
+        check_lt (expectedRatio performanceRatio)   ctratio       testCase0
         check_gt adjustedTime1                      adjustedTime0 testCase0
 
   let referenceData =
