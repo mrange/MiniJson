@@ -325,7 +325,7 @@ let performanceTestCases (dumper : string -> unit) =
       testCases
       dumper
 
-  let expectedRatio v = max 10.0 v
+  let expectedRatio v = max 1.0 v
 
   let compareResults
     (name             : string            )
@@ -367,7 +367,7 @@ let performanceTestCases (dumper : string -> unit) =
       testCases
       dumper
 
-  compareResults "REFERENCE" 4.0 referenceData
+  compareResults "REFERENCE" 3.5 referenceData
 
   let jsonNetData =
     let testCases =

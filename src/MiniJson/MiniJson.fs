@@ -69,10 +69,6 @@ module internal Tokens =
   [<Literal>]
   let NewLine   = "NEWLINE"
 
-  let Exponent  = [|'e'; 'E'|]
-
-  let Sign      = [|'+'; '-'|]
-
 /// Represents a JSON document
 type Json =
   /// ()         - Represents a JSON null value
