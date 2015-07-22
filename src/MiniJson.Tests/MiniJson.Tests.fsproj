@@ -104,14 +104,6 @@
       <Link>Global_AssemblyInfo.fs</Link>
     </Compile>
     <Compile Include="AssemblyInfo.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/Net/UriUtils.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/Net/Http.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/CommonRuntime/IO.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/CommonRuntime/TextConversions.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonValue.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonValue.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonConversions.fs" />
-    <Compile Include="paket-files/fsharp/FSharp.Data/src/Json/JsonExtensions.fs" />
     <None Include="TestCases/charrefs.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -176,10 +168,12 @@
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
-    <None Include="paket.dependencies" />
-    <None Include="paket.lock" />
   </ItemGroup>
   <ItemGroup>
+    <Reference Include="FSharp.Data">
+      <HintPath>..\packages\FSharp.Data.2.2.5\lib\net40\FSharp.Data.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
@@ -201,6 +195,7 @@
       <Project>{68c7233e-b616-4233-a3b8-6881f11dfb2f}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.
