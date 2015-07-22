@@ -231,7 +231,7 @@ module internal Details =
   let inline pow10 n = Pow10Table.[clamp (n - MinimumPow10) 0 (Pow10Table.Length - 1)]
 
   let inline isWhiteSpace (c : char) : bool =
-    c = ' ' || c = '\t' || c = '\n' || c = '\r' 
+    c = ' ' || c = '\t' || c = '\n' || c = '\r'
 
   let inline isDigit (c : char) : bool =
     c >= '0' && c <= '9'

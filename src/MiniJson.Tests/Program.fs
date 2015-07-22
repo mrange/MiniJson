@@ -314,8 +314,8 @@ let performanceTestCases (dumper : string -> unit) =
     Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
 
   let miniJsonData =
-    let testCases = 
-      allTtestCases 
+    let testCases =
+      allTtestCases
       |> Array.filter filterForPerformance
 
     collectPerformanceData
@@ -345,7 +345,7 @@ let performanceTestCases (dumper : string -> unit) =
         let ratio           = adjustedTime1 / adjustedTime0
 
         dumper <| sprintf
-          "TestCase: %s - cc0: %d,%d, cc1: %d,%d, cc2: %d,%d, time: %d,%d ms" 
+          "TestCase: %s - cc0: %d,%d, cc1: %d,%d, cc2: %d,%d, time: %d,%d ms"
           testCase0
           cc00  cc01
           cc10  cc11
