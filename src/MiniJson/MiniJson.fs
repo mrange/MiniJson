@@ -242,13 +242,6 @@ module internal Details =
     else
       false
 
-  let rec consumeWhiteSpace (s : string) (pos : int byref) : unit =
-    if pos < s.Length && isWhiteSpace s.[pos] then
-      pos <- pos + 1
-      consumeWhiteSpace s &pos
-    else
-      ()      
-
   type IParseVisitor with
     member x.ExpectedChars (p : int, chars : string) : unit =
       let e = chars.Length - 1
@@ -283,7 +276,9 @@ module internal Details =
       false
 
     member inline x.consume_WhiteSpace () : bool =
-      consumeWhiteSpace s &pos
+      let l = s.Length
+      while pos < l && (isWhiteSpace s.[pos]) do
+        x.adv ()
       true
 
     member inline x.test_Char (c : char) : bool =
