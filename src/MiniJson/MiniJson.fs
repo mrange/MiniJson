@@ -245,36 +245,39 @@ module internal Details =
         x.ExpectedChar (p, chars.[i])
 
   type JsonParser(s : string, v : IParseVisitor) =
-    let sb          = StringBuilder DefaultSize
-    let mutable pos = 0
+    [<DefaultValue>]
+    val mutable public pos : int
 
-    member x.position           :int   = pos
+    let sb = StringBuilder DefaultSize
 
-    member inline x.neos        : bool = pos < s.Length
-    member inline x.eos         : bool = pos >= s.Length
-    member inline x.ch          : char = s.[pos]
-    member inline x.adv ()      : unit = pos <- pos + 1
+    member inline x.neos        : bool = x.pos < s.Length
+    member inline x.eos         : bool = x.pos >= s.Length
+    member inline x.ch          : char = s.[x.pos]
+    member inline x.adv ()      : unit = x.pos <- x.pos + 1
 
     member x.raise_Eos ()       : bool =
-      v.Unexpected (pos, Tokens.EOS)
+      v.Unexpected (x.pos, Tokens.EOS)
       false
 
     member x.raise_Value ()     : bool =
-      v.Expected      (pos, Tokens.Null )
-      v.Expected      (pos, Tokens.True )
-      v.Expected      (pos, Tokens.False)
-      v.Expected      (pos, Tokens.Digit)
-      v.ExpectedChars (pos, "\"{[-")
+      v.Expected      (x.pos, Tokens.Null )
+      v.Expected      (x.pos, Tokens.True )
+      v.Expected      (x.pos, Tokens.False)
+      v.Expected      (x.pos, Tokens.Digit)
+      v.ExpectedChars (x.pos, "\"{[-")
       false
 
     member x.raise_RootValue () : bool =
-      v.ExpectedChars (pos, "{[")
+      v.ExpectedChars (x.pos, "{[")
       false
 
     member inline x.consume_WhiteSpace () : bool =
-      let l = s.Length
-      while pos < l && (isWhiteSpace s.[pos]) do
-        x.adv ()
+      let ls            = s
+      let mutable lpos  = x.pos
+      let l             = ls.Length
+      while lpos < l && (isWhiteSpace ls.[lpos]) do
+        lpos <- lpos + 1
+      x.pos <- lpos
       true
 
     member inline x.test_Char (c : char) : bool =
@@ -286,7 +289,7 @@ module internal Details =
         x.adv ()
         true
       else
-        v.ExpectedChar (pos, c)
+        v.ExpectedChar (x.pos, c)
         false
 
 // inline causes DEBUG mode to crash (because F# creates tuples of pointers
@@ -303,23 +306,23 @@ module internal Details =
           x.adv ()
           true
         else
-          v.ExpectedChar (pos, first)
-          v.ExpectedChar (pos, second)
+          v.ExpectedChar (x.pos, first)
+          v.ExpectedChar (x.pos, second)
           false
 
     member inline x.tryConsume_Token (tk : string) : bool =
       let tkl           = tk.Length
-      let spos          = pos
+      let spos          = x.pos
       let mutable tpos  = 0
 
-      while tpos < tkl && tk.[tpos] = s.[pos] do
+      while tpos < tkl && tk.[tpos] = s.[x.pos] do
         tpos <- tpos + 1
         x.adv ()
 
       if tpos = tkl then true
       else
         // To support error reporting, move back on failure
-        pos <- spos
+        x.pos <- spos
         false
 
     member x.tryParse_Null () : bool =
@@ -350,7 +353,7 @@ module internal Details =
           r <- 10.0*r + (float c - z)
           x.tryParse_UInt (false, &r)
         else
-          v.Expected (pos, Tokens.Digit)
+          v.Expected (x.pos, Tokens.Digit)
           not first
 
     member x.tryParse_UInt0 (r : float byref) : bool =
@@ -365,10 +368,10 @@ module internal Details =
 
     member x.tryParse_Fraction (r : float byref) : bool =
       if x.tryConsume_Char '.' then
-        let spos        = pos
+        let spos        = x.pos
         let mutable uf  = 0.0
         if x.tryParse_UInt (true, &uf) then
-          r <- (float uf) * (pow10 (spos - pos))
+          r <- (float uf) * (pow10 (spos - x.pos))
           true
         else
           false
@@ -422,7 +425,7 @@ module internal Details =
         elif  c >= 'A' && c <= 'F'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'A' + 10))
         elif  c >= 'a' && c <= 'f'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'a' + 10))
         else
-          v.Expected (pos, Tokens.HexDigit)
+          v.Expected (x.pos, Tokens.HexDigit)
           false
 
     member x.tryParse_Chars () : bool =
@@ -433,7 +436,7 @@ module internal Details =
         let c = x.ch
         match c with
         | '"'         -> true
-        | '\r' | '\n' -> v.Unexpected (pos, Tokens.NewLine); false
+        | '\r' | '\n' -> v.Unexpected (x.pos, Tokens.NewLine); false
         | '\\'        ->
           x.adv ()
           if x.eos then x.raise_Eos ()
@@ -453,7 +456,7 @@ module internal Details =
                 x.adv ()
                 x.tryParse_UnicodeChar (4, 0)
               | _ ->
-                v.ExpectedChars (pos, "\"\\/bfnrtu")
+                v.ExpectedChars (x.pos, "\"\\/bfnrtu")
                 false
             result && x.tryParse_Chars ()
         | _           ->
@@ -547,7 +550,7 @@ module internal Details =
       if x.eos then
         true
       else
-        v.Expected (pos, Tokens.EOS)
+        v.Expected (x.pos, Tokens.EOS)
         false
 
   [<AbstractClass>]
@@ -718,7 +721,7 @@ let tryParse (visitor : IParseVisitor) (input : string) (pos : int byref) : bool
     && jp.tryParse_RootValue  ()
     && jp.tryParse_Eos        ()
 
-  pos <- jp.position
+  pos <- jp.pos
 
   result
 
