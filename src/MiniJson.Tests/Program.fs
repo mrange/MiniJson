@@ -252,13 +252,17 @@ let filterForPerformance (_,name : string ,tc : string) =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let runPerformanceTestCases
+type PerformanceData = string*int*int64
+
+let collectPerformanceData
   (category       : string                  )
-  (referenceParser: string -> ParseResult   )
+  (parser         : string -> ParseResult   )
   (iterations     : int                     )
-  (expected_ratio : float                   )
   (testCases      : (bool*string*string) [] )
-  (dumper         : string -> unit          ) : unit =
+  (dumper         : string -> unit          ) : PerformanceData [] =
+
+  infof "Collecting performance data for %d testcases (%s)..." testCases.Length category
+
   let sw = Stopwatch ()
 
   let timeIt n (a : unit -> 'T) : int64*'T =
@@ -275,81 +279,115 @@ let runPerformanceTestCases
 
     sw.ElapsedMilliseconds, result
 
-  for positive, name, testCase in testCases do
-    dumper <| sprintf "---==> %s <==---" category
-    dumper name
-    dumper (if positive then "positive" else "negative")
-    dumper testCase
+  [|
+    for positive, name, testCase in testCases do
+      dumper <| sprintf "---==> PERFORMANCE (%s) <==---" category
+      dumper name
+      dumper (if positive then "positive" else "negative")
+      dumper testCase
 
-    let reference , _ = timeIt iterations (fun _ -> referenceParser testCase)
-    let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
+      let time , _ = timeIt iterations (fun _ -> parser testCase)
+//      let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
 
-    let actual_ratio  = float reference / max (float actual) 1.
+//      let actual_ratio  = float reference / max (float actual) 1.
 
-    let ref           = float reference / float iterations
-    let act           = float actual / float iterations
+//      let ref           = float reference / float iterations
+//      let act           = float actual / float iterations
 
-    check_lt expected_ratio     actual_ratio            name
-    check_gt ref                (expected_ratio * act)  name
+//      check_lt expected_ratio     actual_ratio            name
+//      check_gt ref                (expected_ratio * act)  name
 
-    dumper <| sprintf "Iterations: %d, reference: %d ms, actual: %d ms" iterations reference actual
+      dumper <| sprintf "Iterations: %d, time: %d ms" iterations time
+      yield name, iterations, time
+  |]
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let performanceRatio v = max 1.0 v
+let performanceRatio v = max 10.0 v
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
 let performanceTestCases (dumper : string -> unit) =
-  let testCases =
+  let allTtestCases =
     Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
-    |> Array.filter filterForPerformance
 
-  infof "Running %d performance testcases (REFERENCE)..." testCases.Length
+  let miniJsonData =
+    let testCases = 
+      allTtestCases 
+      |> Array.filter filterForPerformance
 
-  runPerformanceTestCases
-    "PERFORMANCE TEST (REFERENCE)"
-    ReferenceJsonModule.parse
-    200
-    (performanceRatio 4.0)
-    testCases
-    dumper
-// ----------------------------------------------------------------------------------------------
+    collectPerformanceData
+      "MINIJSON"
+      (parse false)
+      1000
+      testCases
+      dumper
+ 
+  let expectedRatio v = max 10.0 v
 
-// ----------------------------------------------------------------------------------------------
-let performanceJsonNetTestCases (dumper : string -> unit) =
-  let testCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
-    |> Array.filter filterForJsonNet
-    |> Array.filter filterForPerformance
+  let compareResults
+    (name             : string            )
+    (performanceRatio : float             )
+    (data             : PerformanceData[] ) =
+    infof "Comparing performance data between MINIJSON and %s" name
 
-  infof "Running %d performance testcases (JSON.NET)..." testCases.Length
+    for testCase0, iterations0, time0 in miniJsonData do
+      match data |> Array.tryFind (fun (testCase1, _, _) -> testCase0 = testCase1) with
+      | None -> ()
+      | Some (_, iterations1, time1) ->
+        let adjustedTime0   = float time0 / float iterations0
+        let adjustedTime1   = float time1 / float iterations1
 
-  runPerformanceTestCases
-    "PERFORMANCE TEST (JSON.NET)"
-    MiniJson.Tests.JsonNet.parse
-    1000
-    (performanceRatio 1.1)
-    testCases
-    dumper
-// ----------------------------------------------------------------------------------------------
+        let ratio           = adjustedTime1 / adjustedTime0
 
-// ----------------------------------------------------------------------------------------------
-let performanceFSharpDataTestCases (dumper : string -> unit) =
-  let testCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
-    |> Array.filter filterForFSharpData
-    |> Array.filter filterForPerformance
+        check_lt (expectedRatio performanceRatio)   ratio         testCase0
+        check_gt adjustedTime1                      adjustedTime0 testCase0
 
-  infof "Running %d performance testcases (FSHARP.DATA)..." testCases.Length
+  let referenceData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForPerformance
 
-  runPerformanceTestCases
-    "PERFORMANCE TEST (FSHARP.DATA)"
-    MiniJson.Tests.FSharpData.dummyParse  // As we don't want to pay overhead of data conversion
-    1000
-    (performanceRatio 1.5)
-    testCases
-    dumper
+    collectPerformanceData
+      "REFERENCE"
+      ReferenceJsonModule.parse
+      200
+      testCases
+      dumper
+
+  compareResults "REFERENCE" 4.0 referenceData
+
+  let jsonNetData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForJsonNet
+      |> Array.filter filterForPerformance
+
+    collectPerformanceData
+      "JSON.NET"
+      MiniJson.Tests.JsonNet.parse
+      1000
+      testCases
+      dumper
+
+  compareResults "JSON.NET" 1.1 jsonNetData
+
+  let fsharpDataData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForFSharpData
+      |> Array.filter filterForPerformance
+
+    collectPerformanceData
+      "FSHARP.DATA"
+      MiniJson.Tests.FSharpData.dummyParse
+      1000
+      testCases
+      dumper
+
+  compareResults "FSHARP.DATA" 1.5 fsharpDataData
+
+  ()
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
@@ -560,8 +598,6 @@ let main argv =
     pathTestCases                   dumper
 #if !DEBUG
     performanceTestCases            dumper
-    performanceJsonNetTestCases     dumper
-    performanceFSharpDataTestCases  dumper
 #endif
 
   with

@@ -302,7 +302,7 @@ module internal Details =
 #if DEBUG
     member x.tryParse_AnyOf2 (first : char, second : char, r : char byref) : bool =
 #else
-    member inline x.tryParse_AnyOf2 (cs : char [], r : char byref) : bool =
+    member inline x.tryParse_AnyOf2 (first : char, second : char, r : char byref) : bool =
 #endif
       if x.eos then x.raise_Eos ()
       else
