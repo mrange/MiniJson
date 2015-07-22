@@ -69,6 +69,10 @@ module internal Tokens =
   [<Literal>]
   let NewLine   = "NEWLINE"
 
+  let Exponent  = [|'e'; 'E'|]
+
+  let Sign      = [|'+'; '-'|]
+
 /// Represents a JSON document
 type Json =
   /// ()         - Represents a JSON null value
@@ -313,9 +317,9 @@ module internal Details =
           false
 
     member inline x.tryConsume_Token (tk : string) : bool =
-      let tkl = tk.Length
-      let spos = pos
-      let mutable tpos = 0
+      let tkl           = tk.Length
+      let spos          = pos
+      let mutable tpos  = 0
 
       while tpos < tkl && tk.[tpos] = s.[pos] do
         tpos <- tpos + 1
@@ -371,7 +375,7 @@ module internal Details =
     member x.tryParse_Fraction (r : float byref) : bool =
       if x.tryConsume_Char '.' then
         let spos        = pos
-        let mutable uf = 0.0
+        let mutable uf  = 0.0
         if x.tryParse_UInt (true, &uf) then
           r <- (float uf) * (pow10 (spos - pos))
           true
