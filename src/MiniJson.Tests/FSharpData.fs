@@ -39,6 +39,6 @@ let parse (input : string) : ParseResult =
   | ex -> Failure (ex.Message, 0)
 
 let dummyParse (input : string) : ParseResult =
-    ignore <| convert (rawParse input)
+    ignore <| rawParse input
     Success <| JsonNull
 // ----------------------------------------------------------------------------------------------
