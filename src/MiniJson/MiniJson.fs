@@ -69,10 +69,6 @@ module internal Tokens =
   [<Literal>]
   let NewLine   = "NEWLINE"
 
-  let Exponent  = [|'e'; 'E'|]
-
-  let Sign      = [|'+'; '-'|]
-
 /// Represents a JSON document
 type Json =
   /// ()         - Represents a JSON null value
@@ -292,18 +288,17 @@ module internal Details =
       v.ExpectedChar (pos, c)
       false
 
-  let inline tryParse_AnyOf (cs : char []) (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<char>): bool =
+  let inline tryParse_AnyOf2 (first : char) (second : char) (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<char>): bool =
     if eos s pos then raiseEos v pos
     else
       let c = ch s pos
-      let l = cs.Length
-      if charsContains 0 c cs then
+      if c = first || c = second then
         r <- c
         adv &pos
         true
       else
-        for c in cs do
-          v.ExpectedChar (pos, c)
+        v.ExpectedChar (pos, first)
+        v.ExpectedChar (pos, second)
         false
 
   let inline tryConsume_Token (tk : string) (s : string) (pos : byref<int>) : bool =
@@ -376,10 +371,10 @@ module internal Details =
 
   let tryParse_Exponent (v : IParseVisitor) (s : string) (pos : byref<int>) (r : byref<int>) : bool =
     let mutable exp = ' '
-    if tryParse_AnyOf Tokens.Exponent v s &pos &exp then
+    if tryParse_AnyOf2 'e' 'E' v s &pos &exp then
       let mutable sign = '+'
       // Ignore as sign is optional
-      ignore <| tryParse_AnyOf Tokens.Sign v s &pos &sign
+      ignore <| tryParse_AnyOf2 '+' '-' v s &pos &sign
       // TODO: Parsing exponent as float seems unnecessary
       let mutable uf = 0.0
       if tryParse_UInt true v s &pos &uf then
