@@ -245,8 +245,9 @@ module internal Details =
         x.ExpectedChar (p, chars.[i])
 
   type JsonParser(s : string, v : IParseVisitor) =
+
     [<DefaultValue>]
-    val mutable public pos : int
+    val mutable private pos : int
 
     let sb = StringBuilder DefaultSize
 
@@ -254,6 +255,8 @@ module internal Details =
     member inline x.eos         : bool = x.pos >= s.Length
     member inline x.ch          : char = s.[x.pos]
     member inline x.adv ()      : unit = x.pos <- x.pos + 1
+
+    member x.position           = x.pos
 
     member x.raise_Eos ()       : bool =
       v.Unexpected (x.pos, Tokens.EOS)
@@ -721,7 +724,7 @@ let tryParse (visitor : IParseVisitor) (input : string) (pos : int byref) : bool
     && jp.tryParse_RootValue  ()
     && jp.tryParse_Eos        ()
 
-  pos <- jp.pos
+  pos <- jp.position
 
   result
 
