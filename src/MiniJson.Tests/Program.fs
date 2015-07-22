@@ -252,7 +252,7 @@ let filterForPerformance (_,name : string ,tc : string) =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-type PerformanceData = string*int*int64
+type PerformanceData = string*int*int*int*int*int64
 
 let collectPerformanceData
   (category       : string                  )
@@ -265,10 +265,16 @@ let collectPerformanceData
 
   let sw = Stopwatch ()
 
-  let timeIt n (a : unit -> 'T) : int64*'T =
+  let timeIt n (a : unit -> 'T) : int64*int*int*int*'T =
     sw.Reset ()
 
     let result = a ()
+
+    GC.Collect (2, GCCollectionMode.Forced, true)
+
+    let b0  = GC.CollectionCount 0
+    let b1  = GC.CollectionCount 1
+    let b2  = GC.CollectionCount 2
 
     sw.Start ()
 
@@ -277,7 +283,12 @@ let collectPerformanceData
 
     sw.Stop ()
 
-    sw.ElapsedMilliseconds, result
+    let e0  = GC.CollectionCount 0
+    let e1  = GC.CollectionCount 1
+    let e2  = GC.CollectionCount 2
+
+
+    sw.ElapsedMilliseconds, e0 - b0, e1 - b1, e2 - b2, result
 
   [|
     for positive, name, testCase in testCases do
@@ -286,19 +297,10 @@ let collectPerformanceData
       dumper (if positive then "positive" else "negative")
       dumper testCase
 
-      let time , _ = timeIt iterations (fun _ -> parser testCase)
-//      let actual    , _ = timeIt iterations (fun _ -> parse false testCase)
+      let time, cc0, cc1, cc2 , _ = timeIt iterations (fun _ -> parser testCase)
 
-//      let actual_ratio  = float reference / max (float actual) 1.
-
-//      let ref           = float reference / float iterations
-//      let act           = float actual / float iterations
-
-//      check_lt expected_ratio     actual_ratio            name
-//      check_gt ref                (expected_ratio * act)  name
-
-      dumper <| sprintf "Iterations: %d, time: %d ms" iterations time
-      yield name, iterations, time
+      dumper <| sprintf "Iterations: %d, cc0: %d, cc1: %d, cc2: %d, time: %d ms" iterations cc0 cc1 cc2 time
+      yield name, iterations, cc0, cc1, cc2, time
   |]
 // ----------------------------------------------------------------------------------------------
 
@@ -331,14 +333,24 @@ let performanceTestCases (dumper : string -> unit) =
     (data             : PerformanceData[] ) =
     infof "Comparing performance data between MINIJSON and %s" name
 
-    for testCase0, iterations0, time0 in miniJsonData do
-      match data |> Array.tryFind (fun (testCase1, _, _) -> testCase0 = testCase1) with
+    dumper <| sprintf "---==> PERFORMANCE COMPARISON (MINIJSON - %s) <==---" name
+
+    for testCase0, iterations0, cc00, cc10, cc20, time0 in miniJsonData do
+      match data |> Array.tryFind (fun (testCase1, _, _, _, _, _) -> testCase0 = testCase1) with
       | None -> ()
-      | Some (_, iterations1, time1) ->
+      | Some (_, iterations1, cc01, cc11, cc21, time1) ->
         let adjustedTime0   = float time0 / float iterations0
         let adjustedTime1   = float time1 / float iterations1
 
         let ratio           = adjustedTime1 / adjustedTime0
+
+        dumper <| sprintf
+          "TestCase: %s - cc0: %d,%d, cc1: %d,%d, cc2: %d,%d, time: %d,%d ms" 
+          testCase0
+          cc00  cc01
+          cc10  cc11
+          cc20  cc21
+          time0 time1
 
         check_lt (expectedRatio performanceRatio)   ratio         testCase0
         check_gt adjustedTime1                      adjustedTime0 testCase0
@@ -386,8 +398,6 @@ let performanceTestCases (dumper : string -> unit) =
       dumper
 
   compareResults "FSHARP.DATA" 1.5 fsharpDataData
-
-  ()
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
