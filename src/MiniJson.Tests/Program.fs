@@ -324,7 +324,7 @@ let performanceTestCases (dumper : string -> unit) =
       1000
       testCases
       dumper
- 
+
   let expectedRatio v = max 10.0 v
 
   let compareResults

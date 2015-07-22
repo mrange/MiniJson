@@ -231,12 +231,7 @@ module internal Details =
   let inline pow10 n = Pow10Table.[clamp (n - MinimumPow10) 0 (Pow10Table.Length - 1)]
 
   let inline isWhiteSpace (c : char) : bool =
-    match c with
-    | '\t'
-    | '\n'
-    | '\r'
-    | ' ' -> true
-    | _   -> false
+    c = ' ' || c = '\t' || c = '\n' || c = '\r' 
 
   let inline isDigit (c : char) : bool =
     c >= '0' && c <= '9'
@@ -246,6 +241,13 @@ module internal Details =
       vs.[i] = v || charsContains (i + 1) v vs
     else
       false
+
+  let rec consumeWhiteSpace (s : string) (pos : int byref) : unit =
+    if pos < s.Length && isWhiteSpace s.[pos] then
+      pos <- pos + 1
+      consumeWhiteSpace s &pos
+    else
+      ()      
 
   type IParseVisitor with
     member x.ExpectedChars (p : int, chars : string) : unit =
@@ -281,9 +283,7 @@ module internal Details =
       false
 
     member inline x.consume_WhiteSpace () : bool =
-      let l = s.Length
-      while pos < l && (isWhiteSpace s.[pos]) do
-        x.adv ()
+      consumeWhiteSpace s &pos
       true
 
     member inline x.test_Char (c : char) : bool =
