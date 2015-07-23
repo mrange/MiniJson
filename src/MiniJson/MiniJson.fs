@@ -273,7 +273,7 @@ module internal Details =
 
     member inline x.consume_WhiteSpace () : bool =
       let l = s.Length
-      while pos < l && (isWhiteSpace s.[pos]) do
+      while pos < l && (isWhiteSpace x.ch) do
         x.adv ()
       true
 
@@ -309,17 +309,21 @@ module internal Details =
 
     member inline x.tryConsume_Token (tk : string) : bool =
       let tkl           = tk.Length
-      let spos          = pos
-      let mutable tpos  = 0
 
-      while tpos < tkl && tk.[tpos] = s.[pos] do
-        tpos <- tpos + 1
-        x.adv ()
+      if tkl + pos <= s.Length then
+        let spos          = pos
+        let mutable tpos  = 0
 
-      if tpos = tkl then true
+        while tpos < tkl && tk.[tpos] = x.ch do
+          tpos <- tpos + 1
+          x.adv ()
+
+        if tpos = tkl then true
+        else
+          // To support error reporting, move back on failure
+          pos <- spos
+          false
       else
-        // To support error reporting, move back on failure
-        pos <- spos
         false
 
     member x.tryParse_Null () : bool =
