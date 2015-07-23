@@ -429,16 +429,18 @@ module internal Details =
           v.Expected (pos, Tokens.HexDigit)
           false
 
-    member x.tryParse_Chars () : bool =
+    member x.tryParse_Chars (b : int) : bool =
       let inline app (c : char) = ignore <| sb.Append c
+      let inline seq e          = ignore <| sb.Append (s, b, pos - b)
 
       if x.eos then x.raise_Eos ()
       else
         let c = x.ch
         match c with
-        | '"'         -> true
+        | '"'         -> seq pos; true
         | '\r' | '\n' -> v.Unexpected (pos, Tokens.NewLine); false
         | '\\'        ->
+          seq pos
           x.adv ()
           if x.eos then x.raise_Eos ()
           else
@@ -459,16 +461,15 @@ module internal Details =
               | _ ->
                 v.ExpectedChars (pos, "\"\\/bfnrtu")
                 false
-            result && x.tryParse_Chars ()
+            result && x.tryParse_Chars pos
         | _           ->
           x.adv ()
-          app c
-          x.tryParse_Chars ()
+          x.tryParse_Chars b
 
     member x.tryParse_ToStringBuilder () : bool =
       ignore <| sb.Clear ()
       x.tryConsume_Char     '"'
-      && x.tryParse_Chars   ()
+      && x.tryParse_Chars   pos
       && x.tryConsume_Char  '"'
 
     member x.tryParse_String () : bool =

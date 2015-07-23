@@ -150,8 +150,29 @@ let compareParsers
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
+let generatedTestCases =
+  let count       = 1000
+  let repeat i v  = toString i <| JsonArray [| for i in 1..count -> v |]
+
+  let s = @"https:\/\/coursera-university-assets.s3.amazonaws.com\/21\/9a0294e2bf773901afbfcb5ef47d97\/Stanford_Coursera-200x48_RedText_BG.png"
+
+  [|
+    true  , "Lots of nulls   (noindent)"  , repeat false  <| JsonNull
+    true  , "Lots of false   (noindent)"  , repeat false  <| JsonBoolean false
+    true  , "Lots of true    (noindent)"  , repeat false  <| JsonBoolean true
+    true  , "Lots of numbers (noindent)"  , repeat false  <| JsonNumber  123.456
+    true  , "Lots of strings (noindent)"  , repeat false  <| JsonString  s
+    true  , "Lots of nulls   (indent)"    , repeat true   <| JsonNull
+    true  , "Lots of false   (indent)"    , repeat true   <| JsonBoolean false
+    true  , "Lots of true    (indent)"    , repeat true   <| JsonBoolean true
+    true  , "Lots of numbers (indent)"    , repeat true   <| JsonNumber  123.456
+    true  , "Lots of strings (indent)"    , repeat true   <| JsonString  s
+  |]
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
 let random = Random 19740531
-let generatedTestCases = Array.init 1000 <| fun i ->
+let randomizedTestCases = Array.init 1000 <| fun i ->
   randomizeJson 10 random |> fun json -> true, sprintf "Generated: %d" i,toString false json
 // ----------------------------------------------------------------------------------------------
 
@@ -185,7 +206,7 @@ let runFunctionalTestCases
 
 // ----------------------------------------------------------------------------------------------
 let functionalTestCases (dumper : string -> unit) =
-  let testCases = Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases|]
+  let testCases = Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases; randomizedTestCases|]
 
   infof "Running %d functional testcases (REFERENCE)..." testCases.Length
 
@@ -209,7 +230,7 @@ let filterForJsonNet (_,name,_) =
 // ----------------------------------------------------------------------------------------------
 let functionalJsonNetTestCases (dumper : string -> unit) =
   let testCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases; randomizedTestCases |]
     |> Array.filter filterForJsonNet
 
   infof "Running %d functional testcases (JSON.NET)..." testCases.Length
@@ -232,7 +253,7 @@ let filterForFSharpData (_,name,_) =
 // ----------------------------------------------------------------------------------------------
 let functionalFSharpDataTestCases (dumper : string -> unit) =
   let testCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases; randomizedTestCases |]
     |> Array.filter filterForFSharpData
 
   infof "Running %d functional testcases (FSHARP.DATA)..." testCases.Length
@@ -321,7 +342,7 @@ let collectPerformanceData
 // ----------------------------------------------------------------------------------------------
 let performanceTestCases (dumper : string -> unit) =
   let allTtestCases =
-    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases |]
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; (*generatedTestCases;*) randomizedTestCases |]
 
   let miniJsonData =
     let testCases =
