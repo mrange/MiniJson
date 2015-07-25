@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
   <metadata schemaVersion="2">
     <id>M3.MiniJson</id>
-    <version>2.2.1</version>
+    <version>2.2.2</version>
     <title>MiniJson</title>
     <authors>Mårten Rånge</authors>
     <owners>Mårten Rånge</owners>
@@ -18,14 +18,15 @@
     <frameworkAssemblies>
     </frameworkAssemblies>
     <releaseNotes>
-      * 1.0.0   - Initial release
-      * 2.0.0   - Internalizing internal parser details (breaking change for users relying on internal parser details)
-      * 2.0.1   - Documentation update
-      * 2.1.0   - Improved performance (breaking change for users of IParseVisitor)
-      * 2.1.1   - Improved code documentation substantially
-      * 2.1.2   - MiniJson now requires net40-client (down from net452)
-      * 2.2.0   - Removed unsafe methods. Minor perf and memory improvements.
+      * 2.2.2   - Improved toString wrt non-printable characters
       * 2.2.1   - Improved string performance, fixed truncated token issue
+      * 2.2.0   - Removed unsafe methods. Minor perf and memory improvements.
+      * 2.1.2   - MiniJson now requires net40-client (down from net452)
+      * 2.1.1   - Improved code documentation substantially
+      * 2.1.0   - Improved performance (breaking change for users of IParseVisitor)
+      * 2.0.1   - Documentation update
+      * 2.0.0   - Internalizing internal parser details (breaking change for users relying on internal parser details)
+      * 1.0.0   - Initial release
     </releaseNotes>
   </metadata>
   <files>
