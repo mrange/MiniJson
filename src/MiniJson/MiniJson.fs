@@ -69,6 +69,20 @@ module internal Tokens =
   [<Literal>]
   let NewLine   = "NEWLINE"
 
+module internal ToStringDetails =
+  let nonPrintableChars =
+    [|
+      for i in 0..31 ->
+        match char i with
+        | '\b'            -> @"\b"
+        | '\f'            -> @"\f"
+        | '\n'            -> @"\n"
+        | '\r'            -> @"\r"
+        | '\t'            -> @"\t"
+        | ch              -> sprintf "\u%04X" i
+    |]
+
+open ToStringDetails
 /// Represents a JSON document
 type Json =
   /// ()         - Represents a JSON null value
@@ -112,15 +126,11 @@ type Json =
       let e = s.Length - 1
       for i = 0 to e do
         match s.[i] with
-        | '\"'  -> str @"\"""
-        | '\\'  -> str @"\\"
-        | '/'   -> str @"\/"
-        | '\b'  -> str @"\b"
-        | '\f'  -> str @"\f"
-        | '\n'  -> str @"\n"
-        | '\r'  -> str @"\r"
-        | '\t'  -> str @"\t"
-        | c     -> ch c
+        | '\"'            -> str @"\"""
+        | '\\'            -> str @"\\"
+        | '/'             -> str @"\/"
+        | c when c < ' '  -> str ToStringDetails.nonPrintableChars.[int c]
+        | c               -> ch c
       ch '"'
 
     let values b e (vs : 'T array) (a : 'T -> unit) =
@@ -198,7 +208,7 @@ type IParseVisitor =
     abstract Unexpected   : int*string    -> unit
   end
 
-module internal Details =
+module internal ParserDetails =
   [<Literal>]
   let DefaultSize = 16
 
@@ -431,7 +441,7 @@ module internal Details =
 
     member x.tryParse_Chars (b : int) : bool =
       let inline app (c : char) = ignore <| sb.Append c
-      let inline seq e          = ignore <| sb.Append (s, b, pos - b)
+      let inline seq (e :int)   = ignore <| sb.Append (s, b, e - b)
 
       if x.eos then x.raise_Eos ()
       else
@@ -711,7 +721,7 @@ module internal Details =
     member x.Expected       = filter expected
     member x.Unexpected     = filter unexpected
 
-open Details
+open ParserDetails
 
 /// Attempts to parse a JSON document from a string
 ///   visitor : Parser visitor object

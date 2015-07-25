@@ -57,6 +57,7 @@ let positiveTestCases =
     """{ "abc":123}"""
     """{ "abc" :123}"""
     "\t[\rfalse \r\n, true\n]\t"
+    "[\"" + String.Join ("", Array.init 32 id |> Array.map (fun v -> sprintf "\u%04X" v)) + "\"]"
   |] |> Array.map (fun v -> true, sprintf "Positive: %s" v, v)
 
 let noIndentOracles =
@@ -92,6 +93,7 @@ let noIndentOracles =
     """{"abc":123}"""
     """{"abc":123}"""
     "[false,true]"
+    """["\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000B\f\r\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F"]"""
   |]
 
 let withIndentOracles =
@@ -229,6 +231,9 @@ let withIndentOracles =
   true
 ]"""
 
+    """[
+  "\u0000\u0001\u0002\u0003\u0004\u0005\u0006\u0007\b\t\n\u000B\f\r\u000E\u000F\u0010\u0011\u0012\u0013\u0014\u0015\u0016\u0017\u0018\u0019\u001A\u001B\u001C\u001D\u001E\u001F"
+]"""
   |]
 
 let negativeTestCases =
