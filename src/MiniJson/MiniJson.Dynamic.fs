@@ -267,9 +267,9 @@ type JsonPath =
       PathError ((ErrorNotIndexable i)::errors, json, parents)
 
 
-  /// Returns all property keys in order (and with potential duplicates)
+  /// Returns all property names in order (and with potential duplicates)
   ///   if it's not an object or named element doesn't exists returns an empty array
-  member x.Keys : string [] =
+  member x.Names : string [] =
     match x with
     | PathOk (json, parents) ->
       match json with
