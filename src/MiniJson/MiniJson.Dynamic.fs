@@ -235,8 +235,8 @@ type JsonPath =
       | JsonNull
       | JsonBoolean _
       | JsonNumber  _
-      | JsonString  _
-      | JsonObject  _   -> 0
+      | JsonString  _   -> 0
+      | JsonObject  ms  -> ms.Length
       | JsonArray   vs  -> vs.Length
     | PathError _       -> 0
 
@@ -249,9 +249,14 @@ type JsonPath =
       | JsonNull
       | JsonBoolean _
       | JsonNumber  _
-      | JsonString  _
-      | JsonObject  _   ->
+      | JsonString  _   ->
         PathError ([ErrorNotIndexable i], json, parents)
+      | JsonObject  ms  ->
+        if i >= 0 && i < ms.Length then
+          let _, v = ms.[i]
+          PathOk (v, (QueryIndexOf i, json)::parents)
+        else
+          PathError ([ErrorIndexOutBounds i], json, parents)
       | JsonArray   vs  ->
         if i >= 0 && i < vs.Length then
           let v = vs.[i]
@@ -260,6 +265,43 @@ type JsonPath =
           PathError ([ErrorIndexOutBounds i], json, parents)
     | PathError (errors, json, parents) ->
       PathError ((ErrorNotIndexable i)::errors, json, parents)
+
+
+  /// Returns all property keys in order (and with potential duplicates)
+  ///   if it's not an object or named element doesn't exists returns an empty array
+  member x.Keys : string [] =
+    match x with
+    | PathOk (json, parents) ->
+      match json with
+      | JsonNull
+      | JsonBoolean _
+      | JsonNumber  _
+      | JsonString  _
+      | JsonArray   _   ->
+        [||]
+      | JsonObject  ms  ->
+        ms |> Array.map (fun (k,_) -> k)
+    | PathError (errors, json, parents) ->
+      [||]
+
+  /// Returns all children as an array of values in order (and with potential duplicates)
+  ///   if it's not an object, array or named element doesn't exists returns an empty array
+  member x.Children : JsonPath [] =
+    match x with
+    | PathOk (json, parents) ->
+      match json with
+      | JsonNull
+      | JsonBoolean _
+      | JsonNumber  _
+      | JsonString  _   ->
+        [||]
+      | JsonArray   vs  ->
+        vs |> Array.mapi (fun i v -> PathOk (v, (QueryIndexOf i, json)::parents))
+      | JsonObject  ms  ->
+        ms |> Array.mapi (fun i (_,v) -> PathOk (v, (QueryIndexOf i, json)::parents))
+    | PathError (errors, json, parents) ->
+      [||]
+
 
   /// Returns a path to the named element of the referenced object element,
   ///   if it's not an object or named element doesn't exists returns a PathError

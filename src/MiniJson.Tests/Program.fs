@@ -562,6 +562,21 @@ let pathTestCases (dumper : string -> unit) =
   check_scalar (defaultNumber  0.     ) (!!path?Array .[2]          )
   check_scalar (defaultString  "Hello") (!!path?Array .[3]          )
 
+  check_scalar (defaultNull           ) (!!path?Object.[0]          )
+  check_scalar (defaultBoolean false  ) (!!path?Object.[1]          )
+  check_scalar (defaultNumber  123.   ) (!!path?Object.[2]          )
+  check_scalar (defaultString  "There") (!!path?Object.[3]          )
+
+  check_scalar (defaultNull           ) (!!path?Array .Children.[0] )
+  check_scalar (defaultBoolean true   ) (!!path?Array .Children.[1] )
+  check_scalar (defaultNumber  0.     ) (!!path?Array .Children.[2] )
+  check_scalar (defaultString  "Hello") (!!path?Array .Children.[3] )
+
+  check_scalar (defaultNull           ) (!!path?Object.Children.[0] )
+  check_scalar (defaultBoolean false  ) (!!path?Object.Children.[1] )
+  check_scalar (defaultNumber  123.   ) (!!path?Object.Children.[2] )
+  check_scalar (defaultString  "There") (!!path?Object.Children.[3] )
+
   check_eq false    path                .HasValue "HasValue: path"
   check_eq false    path?Object?Null    .HasValue "HasValue: path?Object?Null"
   check_eq true     path?Object?Boolean .HasValue "HasValue: path?Object?Boolean"
@@ -619,6 +634,36 @@ let pathTestCases (dumper : string -> unit) =
   let aLongPath = path?Object?Array.[0]?Invalid.[100]?Missing.AsExpandedString
 
   check_eq eLongPath aLongPath "Long path"
+
+  let keys = [|"Null"; "Boolean"; "Number"; "String"; "Array"|]
+
+  check_eq 0    path?Object?Null    .Length           "Length: path?Object?Null"
+  check_eq 0    path?Object?Boolean .Length           "Length: path?Object?Boolean"
+  check_eq 0    path?Object?Number  .Length           "Length: path?Object?Number"
+  check_eq 0    path?Object?String  .Length           "Length: path?Object?String"
+  check_eq 4    path?Object?Array   .Length           "Length: path?Object?Array"
+  check_eq 5    path?Object         .Length           "Length: path?Object"
+  check_eq 0    path?Object?Invalid .Length           "Length: path?Object?Invalid"
+  check_eq 0    path?Missing?Invalid.Length           "Length: path?Missing?Invalid"
+
+  check_eq [||] path?Object?Null    .Keys             "Keys: path?Object?Null"
+  check_eq [||] path?Object?Boolean .Keys             "Keys: path?Object?Boolean"
+  check_eq [||] path?Object?Number  .Keys             "Keys: path?Object?Number"
+  check_eq [||] path?Object?String  .Keys             "Keys: path?Object?String"
+  check_eq [||] path?Object?Array   .Keys             "Keys: path?Object?Array"
+  check_eq keys path?Object         .Keys             "Keys: path?Object"
+  check_eq [||] path?Object?Invalid .Keys             "Keys: path?Object?Invalid"
+  check_eq [||] path?Missing?Invalid.Keys             "Keys: path?Missing?Invalid"
+
+  check_eq 0    path?Object?Null    .Children.Length  "Children: path?Object?Null"
+  check_eq 0    path?Object?Boolean .Children.Length  "Children: path?Object?Boolean"
+  check_eq 0    path?Object?Number  .Children.Length  "Children: path?Object?Number"
+  check_eq 0    path?Object?String  .Children.Length  "Children: path?Object?String"
+  check_eq 4    path?Object?Array   .Children.Length  "Children: path?Object?Array"
+  check_eq 5    path?Object         .Children.Length  "Children: path?Object"
+  check_eq 0    path?Object?Invalid .Children.Length  "Children: path?Object?Invalid"
+  check_eq 0    path?Missing?Invalid.Children.Length  "Children: path?Missing?Invalid"
+
 
 // ----------------------------------------------------------------------------------------------
 
