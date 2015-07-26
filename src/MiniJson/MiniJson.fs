@@ -224,10 +224,10 @@ module internal ParserDetails =
   //  https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 
   [<Literal>]
-  let MinimumPow10  = -1022
+  let MinimumPow10  = -307
 
   [<Literal>]
-  let MaximumPow10  = 1023
+  let MaximumPow10  = 307
 
   let Pow10Table =
     [|
@@ -382,6 +382,8 @@ module internal ParserDetails =
         let spos        = pos
         let mutable uf  = 0.0
         if x.tryParse_UInt (true, &uf) then
+          // TODO: If fraction is more than 28 digits it exceeds the precision of float exponent
+          //  the remaining digits should be ignored
           r <- (float uf) * (pow10 (spos - pos))
           true
         else
@@ -420,7 +422,13 @@ module internal ParserDetails =
         && x.tryParse_Exponent  (&e)
 
       if result then
-        v.NumberValue (sign ((i + f) * (pow10 e)))
+        if e >= MinimumPow10 && e <= MaximumPow10 then
+          v.NumberValue (sign ((i + f) * (pow10 e)))
+        elif e < MinimumPow10 then
+          v.NumberValue (sign 0.)
+        else
+          v.Unexpected (pos, "NumberOutOfRange")
+          false
       else
         false
 

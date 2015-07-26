@@ -31,6 +31,12 @@ module Details =
   type UserState  = unit
   type Parser<'t> = Parser<'t, UserState>
 
+  [<Literal>]
+  let MinimumPow10  = -307
+
+  [<Literal>]
+  let MaximumPow10  = 307
+
   let pjson =
     let puint64 = puint64 <?> "digit"
 
@@ -64,8 +70,12 @@ module Details =
         pipe2 (skipChar '.') prawuintf (fun _ (uf,c) -> uf * (pow (int -c)))
         <|>% 0.0
       let pexp =
-        pipe3 (anyOf "eE") psign puintf (fun _ sign e -> pow (int (sign e)))
-        <|>% 1.0
+        pipe3 (anyOf "eE") psign puintf (fun _ sign e -> int (sign e))
+        <|>% 0
+        >>= fun e -> 
+          if e < MinimumPow10 then preturn 0.0
+          elif e > MaximumPow10 then fail "NumberOutOfRange"
+          else preturn (pow e)
       let pzero =
         charReturn '0' 0.0
       pipe4 pminus (pzero <|> puintf) pfrac pexp (fun s i f e -> JsonNumber (s (i + f)*e))
