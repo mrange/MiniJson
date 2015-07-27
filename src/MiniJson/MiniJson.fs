@@ -397,8 +397,7 @@ module internal ParserDetails =
           r <- 10.0*r + (float c - z)
           x.tryParse_UInt (false, &r)
         else
-          v.Expected (pos, Tokens.Digit)
-          not first
+          x.raise_Digit () || not first
 
     member x.tryParse_UInt0 (r : float byref) : bool =
       // tryParse_UInt0 only consumes 0 if input is 0123, this in order to be conformant with spec
@@ -469,8 +468,7 @@ module internal ParserDetails =
         elif  c >= 'A' && c <= 'F'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'A' + 10))
         elif  c >= 'a' && c <= 'f'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'a' + 10))
         else
-          v.Expected (pos, Tokens.HexDigit)
-          false
+          x.raise_HexDigit ()
 
     member x.tryParse_Chars (b : int) : bool =
       let inline app (c : char) = ignore <| sb.Append c
