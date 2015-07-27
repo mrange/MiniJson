@@ -535,6 +535,7 @@ module internal ParserDetails =
         if r0 = 0u && r1 = 0u && r2 = 0u then
           v.NumberValue (sign 0M)
         elif effectiveExp >= 0 then
+          // TODO: This can throw
           let d = pow10 effectiveExp * Decimal (int r0, int r1, int r2, hasSign, 0uy)
           v.NumberValue d
         elif effectiveExp >= -28 then
