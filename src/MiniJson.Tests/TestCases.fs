@@ -271,6 +271,8 @@ let negativeTestCases =
     """["Early \ERROR, hello this is a wide errornous string, to demonstrate error window capabilities. The window is around 60 chars"]"""
     """[fals"""
     """[t"""
+    """["Hello\u"""
+    """"""
   |] |> Array.map (fun v -> false, sprintf "Negative: %s" v, v)
 
 let errorReportingOracles =
@@ -439,6 +441,18 @@ Expected: '"', '-', '[', '{', digit, false, null or true"""
 [t
 -^ Pos: 1
 Expected: '"', '-', '[', '{', digit, false, null or true"""
+
+    """Failed to parse input as JSON
+["Hello\u
+---------^ Pos: 9
+Expected: hexdigit
+Unexpected: EOS"""
+
+    """Failed to parse input as JSON
+
+^ Pos: 0
+Expected: '[' or '{'
+Unexpected: EOS"""
   |]
 
 
