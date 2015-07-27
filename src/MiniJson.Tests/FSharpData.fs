@@ -25,8 +25,8 @@ let rawParse (input : string) : JsonValue = JsonValue.Parse (input)
 
 let rec convert = function
   | JsonValue.String  s       -> JsonString s
-  | JsonValue.Number  n       -> JsonNumber (float n)
-  | JsonValue.Float   f       -> JsonNumber f
+  | JsonValue.Number  n       -> JsonNumber n
+  | JsonValue.Float   f       -> JsonNumber (decimal f)
   | JsonValue.Record  members -> JsonObject (members  |> Array.map (fun (k,v) -> k, convert v))
   | JsonValue.Array   values  -> JsonArray  (values   |> Array.map convert)
   | JsonValue.Boolean b       -> JsonBoolean b

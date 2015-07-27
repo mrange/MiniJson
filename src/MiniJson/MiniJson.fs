@@ -102,7 +102,7 @@ type Json =
   /// (value)    - Represents a JSON boolean value
   | JsonBoolean of bool
   /// (value)    - Represents a JSON number value
-  | JsonNumber  of float
+  | JsonNumber  of decimal
   /// (value)    - Represents a JSON string value
   | JsonString  of string
   /// (values)   - Represents a JSON array value
@@ -131,7 +131,7 @@ type Json =
 
     let inline str (s : string)     = ignore <| sb.Append s
     let inline ch  (c : char)       = ignore <| sb.Append c
-    let inline num (f : float)      = ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
+    let inline num (f : decimal)    = ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
 
     let estr (s : string) =
       ch '"'
@@ -208,7 +208,7 @@ type IParseVisitor =
   interface
     abstract NullValue    : unit          -> bool
     abstract BoolValue    : bool          -> bool
-    abstract NumberValue  : double        -> bool
+    abstract NumberValue  : decimal       -> bool
     abstract StringValue  : StringBuilder -> bool
     abstract ArrayBegin   : unit          -> bool
     abstract ArrayEnd     : unit          -> bool
@@ -236,14 +236,14 @@ module internal ParserDetails =
   //  https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 
   [<Literal>]
-  let MinimumPow10  = -1022
+  let MinimumPow10  = -307
 
   [<Literal>]
-  let MaximumPow10  = 1023
+  let MaximumPow10  = 308
 
   let Pow10Table =
     [|
-      for i in MinimumPow10..MaximumPow10 -> pown 10. i
+      for i in MinimumPow10..MaximumPow10 -> pown 10.0 i
     |]
 
   let inline pow10 n = Pow10Table.[clamp (n - MinimumPow10) 0 (Pow10Table.Length - 1)]
@@ -452,7 +452,8 @@ module internal ParserDetails =
         && x.tryParse_Exponent  (&e)
 
       if result then
-        v.NumberValue (sign ((i + f) * (pow10 e)))
+        let f = sign ((i + f) * (pow10 e))
+        v.NumberValue (decimal f)
       else
         false
 

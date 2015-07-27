@@ -42,33 +42,33 @@ module Details =
 
     let pboolean            = stringReturn "true" (JsonBoolean true) <|> stringReturn "false" (JsonBoolean false)
 
-    let prawuintf =
+    let prawuintd =
       let p =
-        let fromDigit(ch : char)= float ch - float '0'
-        let fold f d  = 10.*f + fromDigit d
+        let fromDigit(ch : char)= decimal (int ch - int '0')
+        let fold f d  = 10M*f + fromDigit d
         Inline.Many (fromDigit , fold, id, digit)
 
       pipe3 getPosition p getPosition (fun p ui n -> ui,(n.Index - p.Index))
 
-    let puintf = prawuintf |>> fun (f, _) -> f
+    let puintd = prawuintd |>> fun (f, _) -> f
 
     let pnumber =
-      let inline pow i = pown 10.0 i
-      let pminus : Parser<float->float>=
+      let inline pow i = pown 10M i
+      let pminus : Parser<decimal->decimal>=
         charReturn '-' (fun d -> -d)
         <|>% id
-      let psign : Parser<float->float>=
+      let psign : Parser<decimal->decimal>=
         charReturn '+' id <|> charReturn '-' (fun d -> -d)
         <|>% id
       let pfrac =
-        pipe2 (skipChar '.') prawuintf (fun _ (uf,c) -> uf * (pow (int -c)))
-        <|>% 0.0
+        pipe2 (skipChar '.') prawuintd (fun _ (uf,c) -> uf * (pow (int -c)))
+        <|>% 0M
       let pexp =
-        pipe3 (anyOf "eE") psign puintf (fun _ sign e -> pow (int (sign e)))
-        <|>% 1.0
+        pipe3 (anyOf "eE") psign puintd (fun _ sign e -> pow (int (sign e)))
+        <|>% 1M
       let pzero =
-        charReturn '0' 0.0
-      pipe4 pminus (pzero <|> puintf) pfrac pexp (fun s i f e -> JsonNumber (s (i + f)*e))
+        charReturn '0' 0M
+      pipe4 pminus (pzero <|> puintd) pfrac pexp (fun s i f e -> JsonNumber (s (i + f)*e))
 
     let prawstring =
       let phex =

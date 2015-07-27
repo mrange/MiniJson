@@ -74,7 +74,7 @@ let parse (input : string) : ParseResult =
     let defaultSize   = 4
 
     let inline str ()        = Convert.ToString jtr.Value
-    let inline number ()     = Convert.ToDouble jtr.Value
+    let inline number ()     = Convert.ToDecimal jtr.Value
     let inline boolean ()    = Convert.ToBoolean jtr.Value
 
     let rec loop () =

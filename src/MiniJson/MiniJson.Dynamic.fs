@@ -110,8 +110,8 @@ type JsonScalar =
   | ScalarNull        of Path
   /// (json, parents)         - Represents a bool scalar
   | ScalarBoolean     of Path*bool
-  /// (json, parents)         - Represents a number (float) scalar
-  | ScalarNumber      of Path*float
+  /// (json, parents)         - Represents a number (decimal) scalar
+  | ScalarNumber      of Path*decimal
   /// (json, parents)         - Represents a string scalar
   | ScalarString      of Path*string
   /// (json, parents)         - An errors representing that the referenced element is not a scalar
@@ -146,15 +146,15 @@ type JsonScalar =
     match x with
     | ScalarNull        _     -> false
     | ScalarBoolean     (_,b) -> b
-    | ScalarNumber      (_,n) -> n <> 0.0
+    | ScalarNumber      (_,n) -> n <> 0M
     | ScalarString      (_,s) -> s.Length > 0
     | ScalarNotScalar   _
     | ScalarInvalidPath _     -> false
 
   /// Returns a float representation of the scalar element,
   ///   if the scalar element couldn't be converted successfully returns 0.0.
-  member x.AsFloat : float =
-    x.ConvertToFloat 0.
+  member x.AsFloat : decimal =
+    x.ConvertToFloat 0M
 
   /// Returns a string representation of the scalar element.
   ///   Null values and errors are represented as ""
@@ -168,13 +168,13 @@ type JsonScalar =
 
   /// Returns a float representation of the scalar element.
   ///   This allows the user to specify the value to return if the scalar element couldn't be converted successfully
-  member x.ConvertToFloat (defaultTo : float) : float =
+  member x.ConvertToFloat (defaultTo : decimal) : decimal =
     match x with
-    | ScalarNull        _     -> 0.
-    | ScalarBoolean     (_,b) -> if b then 1. else 0.
+    | ScalarNull        _     -> 0M
+    | ScalarBoolean     (_,b) -> if b then 1M else 0M
     | ScalarNumber      (_,n) -> n
     | ScalarString      (_,s) ->
-      let b,f = Double.TryParse (s, NumberStyles.Float, CultureInfo.InvariantCulture)
+      let b,f = Decimal.TryParse (s, NumberStyles.Float, CultureInfo.InvariantCulture)
       if b then f else defaultTo
     | ScalarNotScalar   _
     | ScalarInvalidPath _     -> defaultTo
@@ -341,7 +341,7 @@ type JsonPath =
 
   /// Returns a float representation of the referenced scalar element,
   ///   if the referenced scalar element couldn't be converted successfully returns 0.0.
-  member x.AsFloat : float =
+  member x.AsFloat : decimal =
     x.Eval.AsFloat
 
   /// Returns a string representation of the referenced scalar element,
@@ -357,7 +357,7 @@ type JsonPath =
   /// Returns a float representation of the referenced scalar element.
   ///   This allows the user to specify the value to return if the referenced scalar element couldn't be converted successfully.
   ///   @defaultTo  - The float to default to if the referenced scalar element couldn't be converted successfully.
-  member x.ConvertToFloat (defaultTo : float) : float =
+  member x.ConvertToFloat (defaultTo : decimal) : decimal =
     x.Eval.ConvertToFloat defaultTo
 
   override x.ToString () : string =
