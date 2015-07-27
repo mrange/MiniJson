@@ -72,7 +72,7 @@ module Details =
       let pexp =
         pipe3 (anyOf "eE") psign puintf (fun _ sign e -> int (sign e))
         <|>% 0
-        >>= fun e -> 
+        >>= fun e ->
           if e < MinimumPow10 then preturn 0.0
           elif e > MaximumPow10 then fail "NumberOutOfRange"
           else preturn (pow e)
