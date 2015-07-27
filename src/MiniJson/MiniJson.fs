@@ -483,9 +483,6 @@ module internal ParserDetails =
       let zero = x.tryConsume_Char '0'
 
       if zero then
-        r0 <- 0u
-        r1 <- 0u
-        r2 <- 0u
         true
       else
         x.tryParse_UInt96 (true, &r0, &r1, &r2)

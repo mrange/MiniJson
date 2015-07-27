@@ -213,7 +213,7 @@ let filterForReference (_,name,_) =
 
 // ----------------------------------------------------------------------------------------------
 let functionalTestCases (dumper : string -> unit) =
-  let testCases = 
+  let testCases =
     Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases; randomizedTestCases|]
     |> Array.filter filterForReference
 
