@@ -23,7 +23,7 @@ http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJ
 http https://raw.githubusercontent.com/mrange/MiniJson/master/src/MiniJson/MiniJson.Dynamic.fs
 ```
 
-[NuGet](http://www.nuget.org/packages/MiniJson/) can also be used to reference MiniJson
+[NuGet](http://www.nuget.org/packages/M3.MiniJson/) can also be used to reference MiniJson
 
 To install MiniJson using NuGet, run the following command in the [Package Manager Console](http://docs.nuget.org/consume/package-manager-console)
 ```
