@@ -57,5 +57,5 @@ let main argv =
 
 # TODO
 
-1. Add Fake script
+1. Migrate to F# project scaffold
 1. Add MiniJson Strong Name

@@ -49,25 +49,37 @@ open System.Text
 
 module internal Tokens =
   [<Literal>]
-  let Null      = "null"
+  let Null              = "null"
 
   [<Literal>]
-  let True      = "true"
+  let True              = "true"
 
   [<Literal>]
-  let False     = "false"
+  let False             = "false"
 
   [<Literal>]
-  let Digit     = "digit"
+  let Char              = "char"
 
   [<Literal>]
-  let HexDigit  = "hexdigit"
+  let Digit             = "digit"
 
   [<Literal>]
-  let EOS       = "EOS"
+  let HexDigit          = "hexdigit"
 
   [<Literal>]
-  let NewLine   = "NEWLINE"
+  let EOS               = "EOS"
+
+  [<Literal>]
+  let NewLine           = "NEWLINE"
+
+  [<Literal>]
+  let Escapes           = "\"\\/bfnrtu"
+
+  [<Literal>]
+  let ValuePreludes     = "\"{[-"
+
+  [<Literal>]
+  let RootValuePreludes = "{["
 
 module internal ToStringDetails =
   let nonPrintableChars =
@@ -274,11 +286,27 @@ module internal ParserDetails =
       v.Expected      (pos, Tokens.True )
       v.Expected      (pos, Tokens.False)
       v.Expected      (pos, Tokens.Digit)
-      v.ExpectedChars (pos, "\"{[-")
+      v.ExpectedChars (pos, Tokens.ValuePreludes)
       false
 
     member x.raise_RootValue () : bool =
-      v.ExpectedChars (pos, "{[")
+      v.ExpectedChars (pos, Tokens.RootValuePreludes)
+      false
+
+    member x.raise_Char () : bool =
+      v.Expected (pos, Tokens.Char)
+      false
+
+    member x.raise_Digit () : bool =
+      v.Expected (pos, Tokens.Digit)
+      false
+
+    member x.raise_HexDigit () : bool =
+      v.Expected (pos, Tokens.HexDigit)
+      false
+
+    member x.raise_Escapes () : bool =
+      v.ExpectedChars (pos, Tokens.Escapes)
       false
 
     member inline x.consume_WhiteSpace () : bool =
@@ -291,7 +319,9 @@ module internal ParserDetails =
       x.neos && x.ch  = c
 
     member inline x.tryConsume_Char (c : char) : bool =
-      if x.eos then x.raise_Eos ()
+      if x.eos then
+        v.ExpectedChar (pos, c)
+        x.raise_Eos ()
       elif x.ch = c then
         x.adv ()
         true
@@ -305,7 +335,10 @@ module internal ParserDetails =
 #else
     member inline x.tryParse_AnyOf2 (first : char, second : char, r : char byref) : bool =
 #endif
-      if x.eos then x.raise_Eos ()
+      if x.eos then
+        v.ExpectedChar (pos, first)
+        v.ExpectedChar (pos, second)
+        x.raise_Eos ()
       else
         let c = x.ch
         if c = first || c = second then
@@ -356,7 +389,7 @@ module internal ParserDetails =
 
     member x.tryParse_UInt (first : bool, r : float byref) : bool =
       let z = float '0'
-      if x.eos then ignore <| x.raise_Eos (); not first
+      if x.eos then x.raise_Digit () || x.raise_Eos () || not first
       else
         let c = x.ch
         if c >= '0' && c <= '9' then
@@ -428,7 +461,7 @@ module internal ParserDetails =
       if n = 0 then
         ignore <| sb.Append (char r)
         true
-      elif x.eos then x.raise_Eos ()
+      elif x.eos then x.raise_HexDigit () || x.raise_Eos ()
       else
         let sr  = r <<< 4
         let   c = x.ch
@@ -443,7 +476,7 @@ module internal ParserDetails =
       let inline app (c : char) = ignore <| sb.Append c
       let inline seq (e :int)   = ignore <| sb.Append (s, b, e - b)
 
-      if x.eos then x.raise_Eos ()
+      if x.eos then x.raise_Char () || x.raise_Eos ()
       else
         let c = x.ch
         match c with
@@ -452,7 +485,7 @@ module internal ParserDetails =
         | '\\'        ->
           seq pos
           x.adv ()
-          if x.eos then x.raise_Eos ()
+          if x.eos then x.raise_Escapes () || x.raise_Eos ()
           else
             let e = x.ch
             let result =
@@ -468,9 +501,7 @@ module internal ParserDetails =
               | 'u' ->
                 x.adv ()
                 x.tryParse_UnicodeChar (4, 0)
-              | _ ->
-                v.ExpectedChars (pos, "\"\\/bfnrtu")
-                false
+              | _ -> x.raise_Escapes ()
             result && x.tryParse_Chars pos
         | _           ->
           x.adv ()
@@ -533,7 +564,7 @@ module internal ParserDetails =
       && v.ObjectEnd              ()
 
     member x.tryParse_Value (): bool =
-      if x.eos then x.raise_Eos ()
+      if x.eos then x.raise_Value () || x.raise_Eos ()
       else
         let result =
           match x.ch with
@@ -549,7 +580,7 @@ module internal ParserDetails =
         result && x.consume_WhiteSpace ()
 
     member x.tryParse_RootValue () : bool =
-      if x.eos then x.raise_Eos ()
+      if x.eos then x.raise_RootValue () || x.raise_Eos ()
       else
         let result =
           match x.ch with
