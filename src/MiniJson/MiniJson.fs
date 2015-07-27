@@ -49,31 +49,37 @@ open System.Text
 
 module internal Tokens =
   [<Literal>]
-  let Null      = "null"
+  let Null              = "null"
 
   [<Literal>]
-  let True      = "true"
+  let True              = "true"
 
   [<Literal>]
-  let False     = "false"
+  let False             = "false"
 
   [<Literal>]
-  let Char      = "char"
+  let Char              = "char"
 
   [<Literal>]
-  let Digit     = "digit"
+  let Digit             = "digit"
 
   [<Literal>]
-  let HexDigit  = "hexdigit"
+  let HexDigit          = "hexdigit"
 
   [<Literal>]
-  let EOS       = "EOS"
+  let EOS               = "EOS"
 
   [<Literal>]
-  let NewLine   = "NEWLINE"
+  let NewLine           = "NEWLINE"
 
   [<Literal>]
-  let Escapes   = "\"\\/bfnrtu"
+  let Escapes           = "\"\\/bfnrtu"
+
+  [<Literal>]
+  let ValuePreludes     = "\"{[-"
+
+  [<Literal>]
+  let RootValuePreludes = "{["
 
 module internal ToStringDetails =
   let nonPrintableChars =
@@ -280,11 +286,11 @@ module internal ParserDetails =
       v.Expected      (pos, Tokens.True )
       v.Expected      (pos, Tokens.False)
       v.Expected      (pos, Tokens.Digit)
-      v.ExpectedChars (pos, "\"{[-")
+      v.ExpectedChars (pos, Tokens.ValuePreludes)
       false
 
     member x.raise_RootValue () : bool =
-      v.ExpectedChars (pos, "{[")
+      v.ExpectedChars (pos, Tokens.RootValuePreludes)
       false
 
     member x.raise_Char () : bool =

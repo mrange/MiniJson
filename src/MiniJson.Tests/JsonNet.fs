@@ -107,8 +107,11 @@ let parse (input : string) : ParseResult =
     match loop () with
     | true  ->
       Debug.Assert (context.Count = 1)
-      let (BuilderRoot root) = context.Pop ()
-      Success !root
+      match context.Pop () with
+      | BuilderRoot root  -> Success !root
+      | _                 ->
+        Debug.Assert false
+        Failure ("Json buildup failure", -1)
     | false ->
       Failure ("Parse failure", jtr.LinePosition)
   with
