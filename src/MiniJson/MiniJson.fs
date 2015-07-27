@@ -337,7 +337,7 @@ module internal ParserDetails =
       v.Unexpected (pos, Tokens.EOS)
       false
 
-    member x.raise_OutRange ()  : bool =
+    member x.raise_OutOfRange (): bool =
       v.Unexpected (pos, Tokens.OutOfRange)
       false
 
@@ -459,7 +459,7 @@ module internal ParserDetails =
             r <- uint32 nr
             x.tryParse_UInt32 (false, &r)
           else
-            x.raise_OutRange ()
+            x.raise_OutOfRange ()
         else
           x.raise_Digit () || not first
 
@@ -474,7 +474,7 @@ module internal ParserDetails =
           if (UInt96.mul10 &r0 &r1 &r2) && (UInt96.add &r0 &r1 &r2 a) then
             x.tryParse_UInt96 (false, &r0, &r1, &r2)
           else
-            x.raise_OutRange ()
+            x.raise_OutOfRange ()
         else
           x.raise_Digit () || not first
 
@@ -541,7 +541,7 @@ module internal ParserDetails =
           let d = Decimal (int r0, int r1, int r2, hasSign, byte -effectiveExp)
           v.NumberValue d
         else
-          x.raise_OutRange ()
+          x.raise_OutOfRange ()
 
       else
         false
