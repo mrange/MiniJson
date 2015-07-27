@@ -42,6 +42,7 @@ module Internal.MiniJson.JsonModule
 module internal Internal.MiniJson.JsonModule
 #endif
 #endif
+open System
 open System.Collections.Generic
 open System.Diagnostics
 open System.Globalization
@@ -80,6 +81,9 @@ module internal Tokens =
 
   [<Literal>]
   let RootValuePreludes = "{["
+
+  [<Literal>]
+  let OutOfRange        = "'Number out of range'"
 
 module internal ToStringDetails =
   let nonPrintableChars =
@@ -236,14 +240,14 @@ module internal ParserDetails =
   //  https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 
   [<Literal>]
-  let MinimumPow10  = -307
+  let MinimumPow10  = 0
 
   [<Literal>]
-  let MaximumPow10  = 308
+  let MaximumPow10  = 28
 
   let Pow10Table =
     [|
-      for i in MinimumPow10..MaximumPow10 -> pown 10.0 i
+      for i in MinimumPow10..MaximumPow10 -> if i = 0 then 1M else pown 10M i
     |]
 
   let inline pow10 n = Pow10Table.[clamp (n - MinimumPow10) 0 (Pow10Table.Length - 1)]
@@ -266,6 +270,58 @@ module internal ParserDetails =
       for i = 0 to e do
         x.ExpectedChar (p, chars.[i])
 
+  module UInt96 =
+    let inline trim (ui : uint64) : uint32 = uint32 ui
+
+    let inline addc
+      (cc : uint32 byref)
+      (l  : uint32 byref)
+      (r  : uint32      )  : unit =
+      let s = uint64 l + uint64 r
+
+      l   <- trim s
+      cc  <- cc + trim (s >>> 32)
+
+    let add
+      (l0 : uint32 byref)
+      (l1 : uint32 byref)
+      (l2 : uint32 byref)
+      (r  : uint32      ) : bool =
+      let mutable c0 = 0u
+      let mutable c1 = 0u
+      let mutable c2 = 0u
+
+      addc &c0 &l0 r
+      addc &c1 &l1 c0
+      addc &c2 &l2 c1
+
+      c2 = 0u
+
+    let inline mul10c
+      (cc : uint32 byref)
+      (l  : uint32 byref) : unit =
+      let s = uint64 l * 10UL
+
+      l   <- trim s
+      cc  <- cc + trim (s >>> 32)
+
+    let mul10
+      (l0 : uint32 byref)
+      (l1 : uint32 byref)
+      (l2 : uint32 byref) : bool =
+      let mutable c0 = 0u
+      let mutable c1 = 0u
+      let mutable c2 = 0u
+
+      mul10c &c0 &l0
+      mul10c &c1 &l1
+      mul10c &c2 &l2
+
+      addc &c1 &l1 c0
+      addc &c2 &l2 c1
+
+      c2 = 0u
+
   type JsonParser(s : string, v : IParseVisitor) =
     let sb          = StringBuilder DefaultSize
     let mutable pos = 0
@@ -279,6 +335,10 @@ module internal ParserDetails =
 
     member x.raise_Eos ()       : bool =
       v.Unexpected (pos, Tokens.EOS)
+      false
+
+    member x.raise_OutRange ()  : bool =
+      v.Unexpected (pos, Tokens.OutOfRange)
       false
 
     member x.raise_Value ()     : bool =
@@ -387,34 +447,54 @@ module internal ParserDetails =
       else
         x.raise_Value ()
 
-    member x.tryParse_UInt (first : bool, r : float byref) : bool =
-      let z = float '0'
+    member x.tryParse_UInt32 (first : bool, r : uint32 byref) : bool =
+      let z = uint64 '0'
       if x.eos then x.raise_Digit () || x.raise_Eos () || not first
       else
         let c = x.ch
         if c >= '0' && c <= '9' then
           x.adv ()
-          r <- 10.0*r + (float c - z)
-          x.tryParse_UInt (false, &r)
+          let nr = 10UL*uint64 r + (uint64 c - z)
+          if (nr >>> 32) = 0UL then
+            r <- uint32 nr
+            x.tryParse_UInt32 (false, &r)
+          else
+            x.raise_OutRange ()
         else
           x.raise_Digit () || not first
 
-    member x.tryParse_UInt0 (r : float byref) : bool =
+    member x.tryParse_UInt96 (first : bool, r0 : uint32 byref, r1 : uint32 byref, r2 : uint32 byref) : bool =
+      let z = uint32 '0'
+      if x.eos then x.raise_Digit () || x.raise_Eos () || not first
+      else
+        let c = x.ch
+        if c >= '0' && c <= '9' then
+          x.adv ()
+          let a = uint32 c - z
+          if (UInt96.mul10 &r0 &r1 &r2) && (UInt96.add &r0 &r1 &r2 a) then
+            x.tryParse_UInt96 (false, &r0, &r1, &r2)
+          else
+            x.raise_OutRange ()
+        else
+          x.raise_Digit () || not first
+
+    member x.tryParse_UInt96_0 (r0 : uint32 byref, r1 : uint32 byref, r2 : uint32 byref) : bool =
       // tryParse_UInt0 only consumes 0 if input is 0123, this in order to be conformant with spec
       let zero = x.tryConsume_Char '0'
 
       if zero then
-        r <- 0.0
+        r0 <- 0u
+        r1 <- 0u
+        r2 <- 0u
         true
       else
-        x.tryParse_UInt (true, &r)
+        x.tryParse_UInt96 (true, &r0, &r1, &r2)
 
-    member x.tryParse_Fraction (r : float byref) : bool =
+    member x.tryParse_Fraction96 (r0 : uint32 byref, r1 : uint32 byref, r2 : uint32 byref, scale : int byref) : bool =
       if x.tryConsume_Char '.' then
         let spos        = pos
-        let mutable uf  = 0.0
-        if x.tryParse_UInt (true, &uf) then
-          r <- (float uf) * (pow10 (spos - pos))
+        if x.tryParse_UInt96 (true, &r0, &r1, &r2) then
+          scale <- pos - spos
           true
         else
           false
@@ -427,9 +507,8 @@ module internal ParserDetails =
         let mutable sign = '+'
         // Ignore as sign is optional
         ignore <| x.tryParse_AnyOf2 ('+', '-', &sign)
-        // TODO: Parsing exponent as float seems unnecessary
-        let mutable ue = 0.0
-        if x.tryParse_UInt (true, &ue) then
+        let mutable ue = 0u
+        if x.tryParse_UInt32 (true, &ue) then
           let inline sign v = if sign = '-' then -v else v
           r <- sign (int ue)
           true
@@ -442,18 +521,31 @@ module internal ParserDetails =
       let hasSign       = x.tryConsume_Char '-'
       let inline sign v = if hasSign then -v else v
 
-      let mutable i = 0.0
-      let mutable f = 0.0
-      let mutable e = 0
+      let mutable r0    = 0u
+      let mutable r1    = 0u
+      let mutable r2    = 0u
+      let mutable scale = 0
+      let mutable exp   = 0
 
       let result =
-        x.tryParse_UInt0        (&i)
-        && x.tryParse_Fraction  (&f)
-        && x.tryParse_Exponent  (&e)
+        x.tryParse_UInt96_0       (&r0, &r1, &r2)
+        && x.tryParse_Fraction96  (&r0, &r1, &r2, &scale)
+        && x.tryParse_Exponent    (&exp)
 
       if result then
-        let f = sign ((i + f) * (pow10 e))
-        v.NumberValue (decimal f)
+        let effectiveExp = exp - scale
+
+        if r0 = 0u && r1 = 0u && r2 = 0u then
+          v.NumberValue (sign 0M)
+        elif effectiveExp >= 0 then
+          let d = pow10 effectiveExp * Decimal (int r0, int r1, int r2, hasSign, 0uy)
+          v.NumberValue d
+        elif effectiveExp >= -28 then
+          let d = Decimal (int r0, int r1, int r2, hasSign, byte -effectiveExp)
+          v.NumberValue d
+        else
+          x.raise_OutRange ()
+
       else
         false
 

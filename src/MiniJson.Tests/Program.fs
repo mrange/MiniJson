@@ -207,7 +207,7 @@ let runFunctionalTestCases
 // ----------------------------------------------------------------------------------------------
 let filterForReference (_,name,_) =
   match name with
-  | "Sample: optionals.json"              -> false  // TODO: Can't handle big floats
+//  | "Sample: optionals.json"              -> false  // TODO: Can't handle big floats
   | _ -> true
 // ----------------------------------------------------------------------------------------------
 

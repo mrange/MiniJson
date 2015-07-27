@@ -68,7 +68,13 @@ module Details =
         <|>% 1M
       let pzero =
         charReturn '0' 0M
-      pipe4 pminus (pzero <|> puintd) pfrac pexp (fun s i f e -> JsonNumber (s (i + f)*e))
+      let pfull = pipe4 pminus (pzero <|> puintd) pfrac pexp (fun s i f e -> JsonNumber (s (i + f)*e))
+      FParsec.Primitives.parse {
+        try
+          return! pfull
+        with
+        | ex -> return! fail "OutOfRange"
+      }
 
     let prawstring =
       let phex =
