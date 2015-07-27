@@ -381,6 +381,7 @@ Expected: digit"""
     """Failed to parse input as JSON
 ["Hello]
 --------^ Pos: 8
+Expected: char
 Unexpected: EOS"""
 
     """Failed to parse input as JSON
@@ -411,6 +412,7 @@ Expected: '"'"""
     """Failed to parse input as JSON
 {"abc:3}
 --------^ Pos: 8
+Expected: char
 Unexpected: EOS"""
 
     """Failed to parse input as JSON
