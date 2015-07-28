@@ -42,6 +42,7 @@ module Internal.MiniJson.JsonModule
 module internal Internal.MiniJson.JsonModule
 #endif
 #endif
+open System
 open System.Collections.Generic
 open System.Diagnostics
 open System.Globalization
@@ -131,7 +132,15 @@ type Json =
 
     let inline str (s : string)     = ignore <| sb.Append s
     let inline ch  (c : char)       = ignore <| sb.Append c
-    let inline num (f : float)      = ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
+    let inline num (f : float)      =
+      if Double.IsNaN f then
+        ignore <| sb.AppendFormat "0"       // JSON doesn't support NaN
+      elif Double.IsPositiveInfinity f then
+        ignore <| sb.AppendFormat "1E309"   // JSON doesn't support +Inf
+      elif Double.IsNegativeInfinity f then
+        ignore <| sb.AppendFormat "-1E309"  // JSON doesn't support -Inf
+      else
+        ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
 
     let estr (s : string) =
       ch '"'
@@ -227,26 +236,24 @@ module internal ParserDetails =
   [<Literal>]
   let ErrorPrelude = "Failed to parse input as JSON"
 
-  let inline clamp v min max =
-    if v < min then min
-    elif v > max then max
-    else v
-
   // Min & Max Exponent of float (double)
   //  https://en.wikipedia.org/wiki/Double-precision_floating-point_format
 
   [<Literal>]
-  let MinimumPow10  = -1022
+  let MinimumPow10  = -323  // Min Exponent is -1022 (binary) but since double supports subnormals effective is even lower
 
   [<Literal>]
-  let MaximumPow10  = 1023
+  let MaximumPow10  = 308   // 1023 (binary)
 
   let Pow10Table =
     [|
       for i in MinimumPow10..MaximumPow10 -> pown 10. i
     |]
 
-  let inline pow10 n = Pow10Table.[clamp (n - MinimumPow10) 0 (Pow10Table.Length - 1)]
+  let inline pow10 n =
+    if n < MinimumPow10 then 0.
+    elif n > MaximumPow10 then Double.PositiveInfinity
+    else Pow10Table.[n - MinimumPow10]
 
   let inline isWhiteSpace (c : char) : bool =
     c = ' ' || c = '\t' || c = '\n' || c = '\r'
@@ -397,8 +404,7 @@ module internal ParserDetails =
           r <- 10.0*r + (float c - z)
           x.tryParse_UInt (false, &r)
         else
-          v.Expected (pos, Tokens.Digit)
-          not first
+          x.raise_Digit () || not first
 
     member x.tryParse_UInt0 (r : float byref) : bool =
       // tryParse_UInt0 only consumes 0 if input is 0123, this in order to be conformant with spec
@@ -453,7 +459,10 @@ module internal ParserDetails =
         && x.tryParse_Exponent  (&e)
 
       if result then
-        v.NumberValue (sign ((i + f) * (pow10 e)))
+        let ff = sign (i + f)
+        let ee = pow10 e
+        let rr = ff*ee
+        v.NumberValue rr
       else
         false
 
@@ -469,8 +478,7 @@ module internal ParserDetails =
         elif  c >= 'A' && c <= 'F'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'A' + 10))
         elif  c >= 'a' && c <= 'f'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'a' + 10))
         else
-          v.Expected (pos, Tokens.HexDigit)
-          false
+          x.raise_HexDigit ()
 
     member x.tryParse_Chars (b : int) : bool =
       let inline app (c : char) = ignore <| sb.Append c
