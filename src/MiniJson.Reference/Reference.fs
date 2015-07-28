@@ -32,6 +32,10 @@ module Details =
   type Parser<'t> = Parser<'t, UserState>
 
   let pjson =
+    let MinimumPow10  = -323  // Min Exponent is -1022 (binary) but since double supports subnormals effective is even lower
+
+    let MaximumPow10  = 308   // 1023 (binary)
+
     let puint64 = puint64 <?> "digit"
 
     let parray  , rparray   = createParserForwardedToRef<Json, unit> ()
@@ -64,8 +68,14 @@ module Details =
         pipe2 (skipChar '.') prawuintf (fun _ (uf,c) -> uf * (pow (int -c)))
         <|>% 0.0
       let pexp =
-        pipe3 (anyOf "eE") psign puintf (fun _ sign e -> pow (int (sign e)))
-        <|>% 1.0
+        let p =
+          pipe3 (anyOf "eE") psign puintf (fun _ sign e -> int (sign e))
+          |>> fun e ->
+            if e < MinimumPow10 then 0.
+            elif e > MaximumPow10 then Double.PositiveInfinity
+            else pow e
+        p <|>% 1.0
+
       let pzero =
         charReturn '0' 0.0
       pipe4 pminus (pzero <|> puintf) pfrac pexp (fun s i f e -> JsonNumber (s (i + f)*e))

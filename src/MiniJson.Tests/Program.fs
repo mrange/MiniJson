@@ -35,7 +35,15 @@ let jsonAsString (random : Random) (json : Json) : string =
 
   let inline str (s : string)     = ignore <| sb.Append s
   let inline ch  (c : char)       = ignore <| sb.Append c
-  let inline num (f : float)      = ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
+  let inline num (f : float)      =
+    if Double.IsNaN f then
+      ignore <| sb.AppendFormat "0"       // JSON doesn't support NaN
+    elif Double.IsPositiveInfinity f then
+      ignore <| sb.AppendFormat "1E309"   // JSON doesn't support +Inf
+    elif Double.IsNegativeInfinity f then
+      ignore <| sb.AppendFormat "-1E309"  // JSON doesn't support -Inf
+    else
+      ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
   let ws ()                       =
     let e = random.Next(-1,3)
     for i = 0 to e do
@@ -205,8 +213,15 @@ let runFunctionalTestCases
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
-let functionalTestCases (dumper : string -> unit) =
-  let testCases = Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases; randomizedTestCases|]
+let filterForReference (_,_,_) =
+  true
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let functionalReferenceTestCases (dumper : string -> unit) =
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases; randomizedTestCases|]
+    |> Array.filter filterForReference
 
   infof "Running %d functional testcases (REFERENCE)..." testCases.Length
 
@@ -223,6 +238,8 @@ let filterForJsonNet (_,name,_) =
   | "Sample: Dates.json"                  -> false  // JSON.NET parses dates, MiniJson doesn't (as JSON has no concept of Dates)
   | "Sample: GitHub.json"                 -> false  // JSON.NET fails to parse GitHub.Json (valid according to http://jsonlint.com)
   | "Sample: optionals.json"              -> false  // JSON.NET fails to parse optionals.Json (valid according to http://jsonlint.com)
+  | "Positive: [1E+309]"                  -> false  // JSON.NET fails to parse big floats
+  | "Positive: [-1E309]"                  -> false  // JSON.NET fails to parse big floats
   | _ when name.StartsWith ("Negative: ") -> false  // JSON.NET is more relaxed when parsing therefore negative testcases can't be compared
   | _ -> true
 // ----------------------------------------------------------------------------------------------
@@ -246,6 +263,8 @@ let functionalJsonNetTestCases (dumper : string -> unit) =
 let filterForFSharpData (_,name,_) =
   match name with
   | "Sample: optionals.json"              -> false  // FSharp.Data difference with MiniJson most likely due to Date/Float parsing, TODO: investigate
+  | "Positive: [1E+309]"                  -> false  // FSharp.Data fails to parse big floats
+  | "Positive: [-1E309]"                  -> false  // FSharp.Data fails to parse big floats
   | _ when name.StartsWith ("Negative: ") -> false  // FSharp.Data is more relaxed when parsing therefore negative testcases can't be compared
   | _ -> true
 // ----------------------------------------------------------------------------------------------
@@ -396,6 +415,7 @@ let performanceTestCases (dumper : string -> unit) =
   let referenceData =
     let testCases =
       allTtestCases
+      |> Array.filter filterForReference
       |> Array.filter filterForPerformance
 
     collectPerformanceData
@@ -682,13 +702,13 @@ let main argv =
     let dumper (s : string) = dump.WriteLine s
 #endif
 
-    functionalTestCases             dumper
-    functionalJsonNetTestCases      dumper
-    functionalFSharpDataTestCases   dumper
-    toStringTestCases               dumper
-    errorReportingTestCases         dumper
-    scalarToStringTestCases         dumper
-    pathTestCases                   dumper
+    functionalReferenceTestCases  dumper
+    functionalJsonNetTestCases    dumper
+    functionalFSharpDataTestCases dumper
+    toStringTestCases             dumper
+    errorReportingTestCases       dumper
+    scalarToStringTestCases       dumper
+    pathTestCases                 dumper
 #if !DEBUG
     performanceTestCases            dumper
 #endif
