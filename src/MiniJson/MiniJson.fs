@@ -134,11 +134,11 @@ type Json =
     let inline ch  (c : char)       = ignore <| sb.Append c
     let inline num (f : float)      =
       if Double.IsNaN f then
-        ignore <| sb.AppendFormat "0"       // JSON doesn't support NaN
+        ignore <| sb.AppendFormat "\"NaN\""   // JSON numbers doesn't support NaN
       elif Double.IsPositiveInfinity f then
-        ignore <| sb.AppendFormat "1E309"   // JSON doesn't support +Inf
+        ignore <| sb.AppendFormat "\"+Inf\""  // JSON numbers doesn't support +Inf
       elif Double.IsNegativeInfinity f then
-        ignore <| sb.AppendFormat "-1E309"  // JSON doesn't support -Inf
+        ignore <| sb.AppendFormat "\"-Inf\""  // JSON numbers doesn't support -Inf
       else
         ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
 
