@@ -140,12 +140,6 @@ type JsonParser(input : string, extendedErrorInfo : bool) =
     | Success json        -> json
     | Failure (msg, pos)  -> raise (JsonParseException (msg, pos))
 
-  /// Gets the parsed JSON object as DynamicObject, throws JsonParseException on parse failure
-  member x.DynamicResult  : obj     =
-    let json      = x.Result
-    let jsonPath  = makePath json
-    upcast JsonDynamicObject jsonPath
-
   /// Gets the parse message, the message describes any potential parse failures
   member x.ParseMessage   : string  =
     match result with
@@ -157,3 +151,9 @@ type JsonParser(input : string, extendedErrorInfo : bool) =
     match result with
     | Success _           -> input.Length
     | Failure (_, pos)    -> pos
+
+  /// Gets the parsed JSON object as DynamicObject, throws JsonParseException on parse failure
+  member x.DynamicResult  : JsonDynamicObject =
+    let json      = x.Result
+    let jsonPath  = makePath json
+    JsonDynamicObject jsonPath

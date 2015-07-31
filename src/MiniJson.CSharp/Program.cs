@@ -30,9 +30,8 @@ namespace MiniJson.Adaptor.Tests
 
       Console.WriteLine ("ParseResult: {0}", jsonParser);
 
-      dynamic root = jsonParser.DynamicResult;
+      dynamic[] users = jsonParser.DynamicResult.GetChildren ();
 
-      dynamic[] users = root.GetChildren ();
       foreach (dynamic user in users)
       {
         string id     = user.id                       ;
