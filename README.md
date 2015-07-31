@@ -30,7 +30,7 @@ To install MiniJson using NuGet, run the following command in the [Package Manag
 PM> Install-Package M3.MiniJson
 ```
 
-Using MiniJson is straight-forward
+Using MiniJson is straight-forward (F#)
 ```fsharp
 open MiniJson.JsonModule
 open MiniJson.DynamicJsonModule
@@ -54,6 +54,37 @@ let main argv =
       printfn "Record - %d: id:%s, name:%s, age:%f" i id name age
   0
 ```
+
+Even though MiniJson is primarily designed with F# in mind there are adaptor
+functionality to make MiniJson usable from C#/VB
+```csharp
+using System;
+
+using MiniJson.Adaptor;
+
+class Program
+{
+  static void Main(string[] args)
+  {
+    var jsonText = @"[{""id"":""123"", ""name"":""Mr. Big"", ""age"":30}, {""id"":""123"", ""name"":""Mr. X""}]";
+
+    var jsonParser = new JsonParser (jsonText, true);
+
+    Console.WriteLine ("ParseResult: {0}", jsonParser);
+
+    dynamic[] users = jsonParser.DynamicResult.GetChildren ();
+
+    foreach (dynamic user in users)
+    {
+      string id     = user.id                       ;
+      string name   = user.name                     ;
+      double age    = user.age.ConvertToFloat (-1.0);
+      Console.WriteLine ("Record: id:{0}, name:{1}, age:{2}", id, name, age);
+    }
+  }
+}
+```
+
 
 # TODO
 
