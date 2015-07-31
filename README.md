@@ -59,3 +59,4 @@ let main argv =
 
 1. Migrate to F# project scaffold
 1. Add MiniJson Strong Name
+2. Add C#/VB adaptor
