@@ -46,10 +46,17 @@ exception JsonParseException of string*int
 
 /// JsonDynamicObject implements DynamicObject which allows C# (and VB) to
 ///   explore JSON values using dynamic lookup
-[<NoEquality>]
-[<NoComparison>]
+[<Sealed>]
+[<NoComparisonAttribute>]
 type JsonDynamicObject(jsonPath : JsonPath) =
   inherit DynamicObject()
+
+  override x.Equals (o : obj)         : bool        =
+    match o with
+    | :? JsonDynamicObject as ox -> jsonPath.Equals (ox.GetJsonPath ())
+    | _ -> false
+
+  override x.GetHashCode ()           : int         = jsonPath.GetHashCode ()
 
   override x.ToString ()              : string      = jsonPath.AsString
 
@@ -104,13 +111,16 @@ type JsonDynamicObject(jsonPath : JsonPath) =
     | PathError _         -> JsonNull
 
   /// Gets the referenced JSON object as string
-  member x.GetJsonString ()     : string    = (x.GetJson ()).ToString ()
+  member x.GetJsonString indent : string    = toString indent (x.GetJson ())
+
+  /// Gets the referenced JSON object as string
+  member x.GetJsonString ()     : string    = x.GetJsonString false
 
   /// Gets the number of child items the referenced JSON object has
   member x.GetLength ()         : int       = jsonPath.Length
 
   /// Returns true if the referenced JSON object exists
-  member x.HasValue             : bool      = jsonPath.HasValue
+  member x.HasValue ()          : bool      = jsonPath.HasValue
 
   /// Converts the referenced JSON object to float (double),
   ///   if conversion fails returns 'f'
@@ -121,12 +131,22 @@ type JsonDynamicObject(jsonPath : JsonPath) =
     jsonPath.Children |> Array.map JsonDynamicObject
 
 
-[<NoEquality>]
+/// JsonParser parses a JSON string
+[<Sealed>]
 [<NoComparison>]
 type JsonParser(input : string, extendedErrorInfo : bool) =
   let result = parse extendedErrorInfo input
 
-  override x.ToString ()  : string  = sprintf "%A" result
+  member internal x.InternalResult  : ParseResult = result
+
+  override x.Equals (o : obj)       : bool        =
+    match o with
+    | :? JsonParser as ox -> result.Equals (ox.InternalResult)
+    | _ -> false
+
+  override x.GetHashCode ()         : int         = result.GetHashCode ()
+
+  override x.ToString ()            : string      = sprintf "%A" result
 
   /// Returns true when parse succeeded
   member x.Success        : bool    = match result with Success _ -> true | _ -> false
