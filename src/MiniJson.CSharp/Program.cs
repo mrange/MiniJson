@@ -32,13 +32,12 @@ namespace MiniJson.Adaptor.Tests
 
       dynamic root = jsonParser.DynamicResult;
 
-      // TODO: This seems unnatural to me (but perhaps ok)
-      dynamic[] users = root;
+      dynamic[] users = root.GetChildren ();
       foreach (dynamic user in users)
       {
-        string id     = user.id   ;
-        string name   = user.name ;
-        double age    = user.age  ;
+        string id     = user.id                       ;
+        string name   = user.name                     ;
+        double age    = user.age.ConvertToFloat (-1.0);
         Console.WriteLine ("Record: id:{0}, name:{1}, age:{2}", id, name, age);
       }
     }

@@ -77,10 +77,7 @@ type JsonDynamicObject(jsonPath : JsonPath) =
 
   override x.TryConvert (binder : ConvertBinder, result : obj byref) : bool =
     let rt = binder.ReturnType
-    if rt = typeof<obj[]> then
-      result <- jsonPath.Children |> Array.map JsonDynamicObject
-      true
-    elif rt = typeof<string> then
+    if rt = typeof<string> then
       result <- jsonPath.AsString
       true
     elif rt = typeof<float> then
@@ -114,6 +111,15 @@ type JsonDynamicObject(jsonPath : JsonPath) =
 
   /// Returns true if the referenced JSON object exists
   member x.HasValue             : bool      = jsonPath.HasValue
+
+  /// Converts the referenced JSON object to float (double),
+  ///   if conversion fails returns 'f'
+  member x.ConvertToFloat f     : float     = jsonPath.ConvertToFloat f
+
+  /// Returns children of referenced JSON object
+  member x.GetChildren ()       : JsonDynamicObject [] =
+    jsonPath.Children |> Array.map JsonDynamicObject
+
 
 [<NoEquality>]
 [<NoComparison>]
