@@ -25,6 +25,7 @@ open System.Text
 open MiniJson
 open MiniJson.JsonModule
 open MiniJson.DynamicJsonModule
+open MiniJson.Adaptor
 open MiniJson.Tests.Test
 open MiniJson.Tests.TestCases
 // ----------------------------------------------------------------------------------------------
@@ -684,6 +685,69 @@ let pathTestCases (dumper : string -> unit) =
   check_eq 0    path?Object?Invalid .Children.Length  "Children: path?Object?Invalid"
   check_eq 0    path?Missing?Invalid.Children.Length  "Children: path?Missing?Invalid"
 
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let adaptorTestCases (dumper : string -> unit) =
+  infof "Running JSON C#/VB Adaptor testcases..."
+
+  let positive = "[1,2,3]"
+  let negative = "[1,2,]"
+
+  let parseMessage = "No errors detected during parse"
+
+  let jsonParser  = JsonParser (positive, false)
+  check_eq true             jsonParser.Success            "positive: Success"
+  check_eq false            jsonParser.Failure            "positive: Failure"
+  check_eq positive.Length  jsonParser.ParsePosition      "positive: ParsePosition"
+  check_eq parseMessage     jsonParser.ParseMessage       "positive: ParsePosition"
+
+  let path = makePath jsonParser.Result
+  check_eq 3                path.Length                   "positive: path.Length"
+  check_eq 1.               path.[0].AsFloat              "positive: path.[0].AsFloat"
+  check_eq 2.               path.[1].AsFloat              "positive: path.[1].AsFloat"
+  check_eq 3.               path.[2].AsFloat              "positive: path.[2].AsFloat"
+
+  let ujson = "[1,2,3]"
+  let ijson = """[
+  1,
+  2,
+  3
+]"""
+
+  let dynamicResult = jsonParser.DynamicResult
+  check_eq -1.            (dynamicResult.ConvertToFloat -1.)                      "positive: dynamicResult.ConvertToFloat -1."
+  check_eq 3              (dynamicResult.GetChildren ()).Length                   "positive: dynamicResult.GetChildren ()"
+  check_eq [||]           (dynamicResult.GetDynamicMemberNames () |> Seq.toArray) "positive: dynamicResult.GetDynamicMemberNames ()"
+  check_eq 3              (dynamicResult.GetLength ())                            "positive: dynamicResult.GetLength ()"
+  check_eq "PathOk: root" (dynamicResult.GetJsonPathString ())                    "positive: dynamicResult.GetJsonPathString ()"
+  check_eq ujson          (dynamicResult.GetJsonString ())                        "positive: dynamicResult.GetJsonString ()"
+  check_eq ujson          (dynamicResult.GetJsonString false)                     "positive: dynamicResult.GetJsonString false"
+  check_eq ijson          (dynamicResult.GetJsonString true)                      "positive: dynamicResult.GetJsonString true"
+  check_eq false          (dynamicResult.HasValue ())                             "positive: dynamicResult.HasValue ()"
+
+  let parseMessage = """Failed to parse input as JSON
+[1,2,
+-----^ Pos: 5
+Expected: '"', '-', '[', '{', digit, false, null or true
+Unexpected: EOS"""
+
+  try
+    let jsonParser = JsonParser ("[1,2,", true)
+    check_eq false            jsonParser.Success        "negative: Success"
+    check_eq true             jsonParser.Failure        "negative: Failure"
+    check_eq 5                jsonParser.ParsePosition  "negative: ParsePosition"
+    check_eq parseMessage     jsonParser.ParseMessage   "negative: ParsePosition"
+
+    ignore <| jsonParser.Result
+
+    error "negative: Exception expected"
+  with
+  | JsonParseException (msg, pos) ->
+    check_eq 5            pos "negative: pos"
+    check_eq parseMessage msg "negative: msg"
+  | ex ->
+    errorf "jsonParser: Wrong Exception caught: %s" ex.Message
 
 // ----------------------------------------------------------------------------------------------
 
@@ -702,16 +766,26 @@ let main argv =
     let dumper (s : string) = dump.WriteLine s
 #endif
 
-    functionalReferenceTestCases  dumper
-    functionalJsonNetTestCases    dumper
-    functionalFSharpDataTestCases dumper
-    toStringTestCases             dumper
-    errorReportingTestCases       dumper
-    scalarToStringTestCases       dumper
-    pathTestCases                 dumper
+    let testSuites =
+      [|
+        functionalReferenceTestCases
+        functionalJsonNetTestCases
+        functionalFSharpDataTestCases
+        toStringTestCases
+        errorReportingTestCases
+        scalarToStringTestCases
+        pathTestCases
+        adaptorTestCases
 #if !DEBUG
-    performanceTestCases            dumper
+        performanceTestCases
 #endif
+      |]
+
+    for testSuite in testSuites do
+      try
+        testSuite dumper
+      with
+      | ex -> errorf "EXCEPTION: %s" ex.Message
 
   with
   | ex -> errorf "EXCEPTION: %s" ex.Message
