@@ -22,6 +22,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "MiniJson.NuGet", "MiniJson.NuGet\MiniJson.NuGet.fsproj", "{80BDD5EA-BD91-479B-8D6F-1DCD1A18F49A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiniJson.CSharp", "MiniJson.CSharp\MiniJson.CSharp.csproj", "{ADF5BA44-E250-4C08-865E-793C009C9A5B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -92,6 +94,18 @@ Global
 		{80BDD5EA-BD91-479B-8D6F-1DCD1A18F49A}.Release|x64.Build.0 = Release|x64
 		{80BDD5EA-BD91-479B-8D6F-1DCD1A18F49A}.Release|x86.ActiveCfg = Release|x86
 		{80BDD5EA-BD91-479B-8D6F-1DCD1A18F49A}.Release|x86.Build.0 = Release|x86
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Debug|x64.Build.0 = Debug|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Debug|x86.Build.0 = Debug|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Release|x64.ActiveCfg = Release|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Release|x64.Build.0 = Release|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Release|x86.ActiveCfg = Release|Any CPU
+		{ADF5BA44-E250-4C08-865E-793C009C9A5B}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

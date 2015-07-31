@@ -111,6 +111,7 @@
     <Content Include="packages.config" />
     <Compile Include="MiniJson.fs" />
     <Compile Include="MiniJson.Dynamic.fs" />
+    <Compile Include="MiniJson.Adaptor.fs" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="mscorlib" />
