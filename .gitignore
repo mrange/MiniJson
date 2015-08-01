@@ -6,8 +6,10 @@
 *.user
 *.sln.docstates
 
+
 packages/
 *.nupkg
+results.xml
 
 # Build results
 [Dd]ebug/
