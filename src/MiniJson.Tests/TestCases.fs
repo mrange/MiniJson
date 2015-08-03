@@ -291,6 +291,12 @@ let negativeTestCases =
     """[t"""
     """["Hello\u"""
     """"""
+    """[] []"""
+    """["
+"]"""
+    """[-"""
+    """[1.0"""
+    """[nul]"""
   |] |> Array.map (fun v -> false, sprintf "Negative: %s" v, v)
 
 let errorReportingOracles =
@@ -471,6 +477,33 @@ Unexpected: EOS"""
 ^ Pos: 0
 Expected: '[' or '{'
 Unexpected: EOS"""
+
+    """Failed to parse input as JSON
+[] []
+---^ Pos: 3
+Expected: EOS"""
+
+    """Failed to parse input as JSON
+["  "]
+--^ Pos: 2
+Unexpected: NEWLINE"""
+
+    """Failed to parse input as JSON
+[-
+--^ Pos: 2
+Expected: '0' or digit
+Unexpected: EOS"""
+
+    """Failed to parse input as JSON
+[1.0
+----^ Pos: 4
+Expected: ',', 'E', 'e' or digit
+Unexpected: EOS"""
+
+    """Failed to parse input as JSON
+[nul]
+-^ Pos: 1
+Expected: '"', '-', '[', '{', digit, false, null or true"""
   |]
 
 

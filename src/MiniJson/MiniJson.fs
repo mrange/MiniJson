@@ -250,7 +250,7 @@ module internal ParserDetails =
       for i in MinimumPow10..MaximumPow10 -> pown 10. i
     |]
 
-  let inline pow10 n =
+  let pow10 (n : int) : float =
     if n < MinimumPow10 then 0.
     elif n > MaximumPow10 then Double.PositiveInfinity
     else Pow10Table.[n - MinimumPow10]
@@ -260,12 +260,6 @@ module internal ParserDetails =
 
   let inline isDigit (c : char) : bool =
     c >= '0' && c <= '9'
-
-  let rec charsContains (i : int) (v : char) (vs : char []) : bool =
-    if i < vs.Length then
-      vs.[i] = v || charsContains (i + 1) v vs
-    else
-      false
 
   type IParseVisitor with
     member x.ExpectedChars (p : int, chars : string) : unit =
@@ -279,10 +273,18 @@ module internal ParserDetails =
 
     member x.position           :int   = pos
 
+// COVERAGE: inline makes code coverage not work
+#if DEBUG
+    member x.neos        : bool = pos < s.Length
+    member x.eos         : bool = pos >= s.Length
+    member x.ch          : char = s.[pos]
+    member x.adv ()      : unit = pos <- pos + 1
+#else
     member inline x.neos        : bool = pos < s.Length
     member inline x.eos         : bool = pos >= s.Length
     member inline x.ch          : char = s.[pos]
     member inline x.adv ()      : unit = pos <- pos + 1
+#endif
 
     member x.raise_Eos ()       : bool =
       v.Unexpected (pos, Tokens.EOS)
@@ -316,16 +318,31 @@ module internal ParserDetails =
       v.ExpectedChars (pos, Tokens.Escapes)
       false
 
+// COVERAGE: inline makes code coverage not work
+#if DEBUG
+    member x.consume_WhiteSpace () : bool =
+#else
     member inline x.consume_WhiteSpace () : bool =
+#endif
       let l = s.Length
       while pos < l && (isWhiteSpace x.ch) do
         x.adv ()
       true
 
+// COVERAGE: inline makes code coverage not work
+#if DEBUG
+    member x.test_Char (c : char) : bool =
+#else
     member inline x.test_Char (c : char) : bool =
+#endif
       x.neos && x.ch  = c
 
+// COVERAGE: inline makes code coverage not work
+#if DEBUG
+    member x.tryConsume_Char (c : char) : bool =
+#else
     member inline x.tryConsume_Char (c : char) : bool =
+#endif
       if x.eos then
         v.ExpectedChar (pos, c)
         x.raise_Eos ()
@@ -336,7 +353,8 @@ module internal ParserDetails =
         v.ExpectedChar (pos, c)
         false
 
-// inline causes DEBUG mode to crash (because F# creates tuples of pointers
+// inline causes DEBUG mode to crash (because F# creates tuples of pointers)
+// COVERAGE: inline makes code coverage not work
 #if DEBUG
     member x.tryParse_AnyOf2 (first : char, second : char, r : char byref) : bool =
 #else
@@ -357,7 +375,12 @@ module internal ParserDetails =
           v.ExpectedChar (pos, second)
           false
 
+// COVERAGE: inline makes code coverage not work
+#if DEBUG
+    member x.tryConsume_Token (tk : string) : bool =
+#else
     member inline x.tryConsume_Token (tk : string) : bool =
+#endif
       let tkl           = tk.Length
 
       if tkl + pos <= s.Length then
@@ -437,8 +460,8 @@ module internal ParserDetails =
         // TODO: Parsing exponent as float seems unnecessary
         let mutable ue = 0.0
         if x.tryParse_UInt (true, &ue) then
-          let inline sign v = if sign = '-' then -v else v
-          r <- sign (int ue)
+          let ur = int ue
+          r <- if sign = '-' then -ur else ur
           true
         else
           false
@@ -447,7 +470,6 @@ module internal ParserDetails =
 
     member x.tryParse_Number () : bool =
       let hasSign       = x.tryConsume_Char '-'
-      let inline sign v = if hasSign then -v else v
 
       let mutable i = 0.0
       let mutable f = 0.0
@@ -459,7 +481,8 @@ module internal ParserDetails =
         && x.tryParse_Exponent  (&e)
 
       if result then
-        let ff = sign (i + f)
+        let uu = i + f
+        let ff = if hasSign then -uu else uu
         let ee = pow10 e
         let rr = ff*ee
         v.NumberValue rr
@@ -529,7 +552,12 @@ module internal ParserDetails =
       x.tryParse_ToStringBuilder ()
       && v.MemberKey sb
 
+// COVERAGE: inline makes code coverage not work
+#if DEBUG
+    member x.tryConsume_Delimiter (first : bool) : bool =
+#else
     member inline x.tryConsume_Delimiter (first : bool) : bool =
+#endif
       if first then true
       else
         x.tryConsume_Char       ','
