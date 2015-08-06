@@ -140,7 +140,7 @@ type Json =
       elif Double.IsNegativeInfinity f then
         ignore <| sb.AppendFormat "\"-Inf\""  // JSON numbers doesn't support -Inf
       else
-        ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
+        ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0:G}", f)
 
     let estr (s : string) =
       ch '"'
@@ -217,7 +217,7 @@ type IParseVisitor =
   interface
     abstract NullValue    : unit          -> bool
     abstract BoolValue    : bool          -> bool
-    abstract NumberValue  : double        -> bool
+    abstract NumberValue  : float         -> bool
     abstract StringValue  : StringBuilder -> bool
     abstract ArrayBegin   : unit          -> bool
     abstract ArrayEnd     : unit          -> bool
