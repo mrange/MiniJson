@@ -44,7 +44,7 @@ let jsonAsString (random : Random) (json : Json) : string =
     elif Double.IsNegativeInfinity f then
       ignore <| sb.AppendFormat "\"-Inf\""  // JSON numbers doesn't support -Inf
     else
-      ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0}", f)
+      ignore <| sb.AppendFormat (CultureInfo.InvariantCulture, "{0:G}", f)
   let ws ()                       =
     let e = random.Next(-1,3)
     for i = 0 to e do
@@ -54,20 +54,28 @@ let jsonAsString (random : Random) (json : Json) : string =
       | 2 -> ch '\t'
       | _ -> ch ' '
 
+  let nonPrintableChars =
+    [|
+      for i in 0..31 ->
+        match char i with
+        | '\b'            -> @"\b"
+        | '\f'            -> @"\f"
+        | '\n'            -> @"\n"
+        | '\r'            -> @"\r"
+        | '\t'            -> @"\t"
+        | ch              -> sprintf "\u%04X" i
+    |]
+
   let estr (s : string) =
     ch '"'
     let e = s.Length - 1
     for i = 0 to e do
       match s.[i] with
-      | '\"'  -> str @"\"""
-      | '\\'  -> str @"\\"
-      | '/'   -> str @"\/"
-      | '\b'  -> str @"\b"
-      | '\f'  -> str @"\f"
-      | '\n'  -> str @"\n"
-      | '\r'  -> str @"\r"
-      | '\t'  -> str @"\t"
-      | c     -> ch c
+      | '\"'            -> str @"\"""
+      | '\\'            -> str @"\\"
+      | '/'             -> str @"\/"
+      | c when c < ' '  -> str nonPrintableChars.[int c]
+      | c               -> ch c
     ch '"'
 
   let values b e (vs : 'T array) (a : 'T -> unit) =
