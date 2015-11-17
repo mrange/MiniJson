@@ -389,6 +389,9 @@ let collectPerformanceData
 
 // ----------------------------------------------------------------------------------------------
 let performanceTestCases (dumper : string -> unit) =
+
+  use perfCsv = new StreamWriter("perf.csv", false, Encoding.UTF8)
+
   let allTtestCases =
     Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; (*generatedTestCases;*) randomizedTestCases |]
 
@@ -404,7 +407,42 @@ let performanceTestCases (dumper : string -> unit) =
       testCases
       dumper
 
+  let writeField (f : string) =
+    perfCsv.Write (f.Replace(',', ' '))
+  let writeDelimiter () =
+    perfCsv.Write ","
+  let writeNewLine () =
+    perfCsv.WriteLine ()
+
+  writeField "parser"
+  for testCase, _, _, _, _, _, _ in miniJsonData do
+    writeDelimiter ()
+    writeField testCase
+  writeNewLine ()
+
   let expectedRatio v = max 1.0 v
+
+  let writeResults
+    (name             : string            )
+    (data             : PerformanceData[] ) =
+    infof "Writing performance data for %s" name
+
+    writeField name
+
+    for testCase0, iterations0, cc00, cc10, cc20, time0, ct0 in miniJsonData do
+      writeDelimiter ()
+      match data |> Array.tryFind (fun (testCase1, _, _, _, _, _, _) -> testCase0 = testCase1) with
+      | None ->
+        writeField "-"
+      | Some (_, iterations1, cc01, cc11, cc21, time1, ct1) ->
+        let adjustedTime0       = float time0 / float iterations0
+        let adjustedTime1       = float time1 / float iterations1
+
+        let ratio = adjustedTime1 / adjustedTime0
+
+        writeField (ratio.ToString (CultureInfo.InvariantCulture))
+
+    writeNewLine ()
 
   let compareResults
     (name             : string            )
@@ -441,6 +479,8 @@ let performanceTestCases (dumper : string -> unit) =
         check_lt (expectedRatio performanceRatio)   ctratio       testCase0
         check_gt adjustedTime1                      adjustedTime0 testCase0
 
+  writeResults "MINIJSON" miniJsonData
+
   let referenceData =
     let testCases =
       allTtestCases
@@ -455,6 +495,7 @@ let performanceTestCases (dumper : string -> unit) =
       dumper
 
   compareResults "REFERENCE" 3.5 referenceData
+  writeResults "REFERENCE" referenceData
 
   let jilData =
     let testCases =
@@ -470,6 +511,7 @@ let performanceTestCases (dumper : string -> unit) =
       dumper
 
   compareResults "JIL" 1.15 jilData
+  writeResults "JIL" jilData
 
   let jsonNetData =
     let testCases =
@@ -485,6 +527,7 @@ let performanceTestCases (dumper : string -> unit) =
       dumper
 
   compareResults "JSON.NET" 1.1 jsonNetData
+  writeResults "JSON.NET" jsonNetData
 
   let fsharpDataData =
     let testCases =
@@ -500,6 +543,7 @@ let performanceTestCases (dumper : string -> unit) =
       dumper
 
   compareResults "FSHARP.DATA" 1.3 fsharpDataData
+  writeResults "FSHARP.DATA" fsharpDataData
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
