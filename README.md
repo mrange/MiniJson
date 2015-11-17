@@ -6,6 +6,8 @@ MiniJson is a [conforming](http://jsonlint.com) [JSON](http://json.org) parser f
 MiniJson has decent performance (compares favourable to [Json.NET](http://www.newtonsoft.com/json) and [FSharp.Data](https://github.com/fsharp/FSharp.Data))
 and provides decent error messages (possible to suppress if performance is of importance).
 
+![Deserialization Performance Comparison](https://raw.githubusercontent.com/mrange/MiniJson/master/images/perf_minijson.png)
+
 Example of error message when trying to parse an invalid JSON document: "{"abc":}"
 ```
 Failed to parse input as JSON
