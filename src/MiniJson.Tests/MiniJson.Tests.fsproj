@@ -165,6 +165,7 @@
     <Compile Include="TestCases.fs" />
     <Compile Include="FSharpData.fs" />
     <Compile Include="JsonNet.fs" />
+    <Compile Include="Jil.fs" />
     <Compile Include="Program.fs" />
     <None Include="App.config" />
     <Content Include="packages.config" />
@@ -174,12 +175,20 @@
       <HintPath>..\packages\FSharp.Data.2.2.5\lib\net40\FSharp.Data.dll</HintPath>
       <Private>True</Private>
     </Reference>
+    <Reference Include="Jil">
+      <HintPath>..\packages\Jil.2.12.1\lib\net45\Jil.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
     <Reference Include="mscorlib" />
     <Reference Include="FSharp.Core, Version=$(TargetFSharpCoreVersion), Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a">
       <Private>True</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.7.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Sigil">
+      <HintPath>..\packages\Sigil.4.5.0\lib\net45\Sigil.dll</HintPath>
       <Private>True</Private>
     </Reference>
     <Reference Include="System" />
@@ -195,6 +204,7 @@
       <Project>{68c7233e-b616-4233-a3b8-6881f11dfb2f}</Project>
       <Private>True</Private>
     </ProjectReference>
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Xml.Linq" />
   </ItemGroup>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

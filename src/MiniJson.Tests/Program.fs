@@ -294,6 +294,26 @@ let functionalFSharpDataTestCases (dumper : string -> unit) =
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
+let filterForJil (_,name : string,_) =
+  true
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
+let functionalJilTestCases (dumper : string -> unit) =
+  let testCases =
+    Array.concat [|positiveTestCases; negativeTestCases; sampleTestCases; generatedTestCases; randomizedTestCases |]
+    |> Array.filter filterForJil
+
+  infof "Running %d functional testcases (JIL)..." testCases.Length
+
+  runFunctionalTestCases
+    "FUNCTIONAL TEST (JIL)"
+    (compareParsers MiniJson.Tests.Jil.parse)
+    testCases
+    dumper
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
 let filterForPerformance (_,name : string ,tc : string) =
   match name with
   | _ when name.StartsWith ("Negative: ") -> false  // Negative test cases aren't tested for performance
@@ -435,6 +455,21 @@ let performanceTestCases (dumper : string -> unit) =
       dumper
 
   compareResults "REFERENCE" 3.5 referenceData
+
+  let jilData =
+    let testCases =
+      allTtestCases
+      |> Array.filter filterForJil
+      |> Array.filter filterForPerformance
+
+    collectPerformanceData
+      "JIL"
+      MiniJson.Tests.Jil.dummyParse
+      1000
+      testCases
+      dumper
+
+  compareResults "JIL" 1.15 jilData
 
   let jsonNetData =
     let testCases =
@@ -848,6 +883,7 @@ let main argv =
     let testSuites =
       [|
         functionalReferenceTestCases
+//        functionalJilTestCases
         functionalJsonNetTestCases
         functionalFSharpDataTestCases
         toStringTestCases
