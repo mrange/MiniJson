@@ -7,6 +7,8 @@ MiniJson has decent performance (compares favourable to [Json.NET](http://www.ne
 and provides decent error messages (possible to suppress if performance is of importance).
 
 ![Deserialization Performance Comparison (lower is better)](https://raw.githubusercontent.com/mrange/MiniJson/master/images/perf_minijson.png)
+MiniJson deserialization compared to popular JSON libraries. Lower is better.
+
 
 Example of error message when trying to parse an invalid JSON document: "{"abc":}"
 ```
