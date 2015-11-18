@@ -495,7 +495,6 @@ let performanceTestCases (dumper : string -> unit) =
       dumper
 
   compareResults "REFERENCE" 3.5 referenceData
-  writeResults "REFERENCE" referenceData
 
   let jilData =
     let testCases =
