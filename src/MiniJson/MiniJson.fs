@@ -268,6 +268,7 @@ module internal ParserDetails =
         x.ExpectedChar (p, chars.[i])
 
   type JsonParser(s : string, v : IParseVisitor) =
+    // TODO: Test replacing StringBuilder with a leaner datatype (array?) for performance
     let sb          = StringBuilder DefaultSize
     let mutable pos = 0
 
@@ -422,7 +423,7 @@ module internal ParserDetails =
       if x.eos then x.raise_Digit () || x.raise_Eos () || not first
       else
         let c = x.ch
-        if c >= '0' && c <= '9' then
+        if isDigit c then
           x.adv ()
           r <- 10.0*r + (float c - z)
           x.tryParse_UInt (false, &r)
@@ -444,7 +445,7 @@ module internal ParserDetails =
         let spos        = pos
         let mutable uf  = 0.0
         if x.tryParse_UInt (true, &uf) then
-          r <- (float uf) * (pow10 (spos - pos))
+          r <- uf * (pow10 (spos - pos))
           true
         else
           false
@@ -497,7 +498,7 @@ module internal ParserDetails =
       else
         let sr  = r <<< 4
         let   c = x.ch
-        if    c >= '0' && c <= '9'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int '0'))
+        if    isDigit c             then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int '0'))
         elif  c >= 'A' && c <= 'F'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'A' + 10))
         elif  c >= 'a' && c <= 'f'  then x.adv () ; x.tryParse_UnicodeChar (n - 1, sr + (int c - int 'a' + 10))
         else
@@ -558,10 +559,7 @@ module internal ParserDetails =
 #else
     member inline x.tryConsume_Delimiter (first : bool) : bool =
 #endif
-      if first then true
-      else
-        x.tryConsume_Char       ','
-        && x.consume_WhiteSpace ()
+      first || (x.tryConsume_Char ',' && x.consume_WhiteSpace ())
 
     member x.tryParse_ArrayValues (first : bool) : bool =
       if x.test_Char ']' then
@@ -626,11 +624,7 @@ module internal ParserDetails =
         result && x.consume_WhiteSpace ()
 
     member x.tryParse_Eos () : bool =
-      if x.eos then
-        true
-      else
-        v.Expected (pos, Tokens.EOS)
-        false
+      x.eos || (v.Expected (pos, Tokens.EOS); false)
 
   [<AbstractClass>]
   [<NoEquality>]
