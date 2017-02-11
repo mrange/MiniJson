@@ -602,6 +602,11 @@ let scalarToStringTestCases (dumper : string -> unit) =
     check_eq expected (toString false testCase) expected
 
 // ----------------------------------------------------------------------------------------------
+// TODO: F#4.1 workaround
+let inline ( ? ) (x : JsonPath) name = x.Get name
+// ----------------------------------------------------------------------------------------------
+
+// ----------------------------------------------------------------------------------------------
 let pathTestCases (dumper : string -> unit) =
   infof "Running Dynamic JSON testcases..."
 
