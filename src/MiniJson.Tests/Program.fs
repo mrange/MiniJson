@@ -25,6 +25,8 @@ open System.Text
 open MiniJson
 open MiniJson.JsonModule
 open MiniJson.DynamicJsonModule
+// These operators are provided as a workaround for the possible regression in F#4.1
+open MiniJson.DynamicJsonModule.Infixes
 open MiniJson.Adaptor
 open MiniJson.Tests.Test
 open MiniJson.Tests.TestCases
@@ -601,9 +603,6 @@ let scalarToStringTestCases (dumper : string -> unit) =
   for testCase, expected in testCases do
     check_eq expected (toString false testCase) expected
 
-// ----------------------------------------------------------------------------------------------
-// TODO: F#4.1 workaround
-let inline ( ? ) (x : JsonPath) name = x.Get name
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
