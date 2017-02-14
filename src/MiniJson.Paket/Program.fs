@@ -27,6 +27,9 @@ let main argv =
 
     let root = json.Query
 
+    // TODO: F#4.1 workaround
+    let inline ( ? ) (x : JsonPath) name = x.Get name
+
     for i = 0 to root.Length - 1 do
       let v     = root.[i]
       let id    = v?id.AsString

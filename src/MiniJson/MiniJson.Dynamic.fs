@@ -374,11 +374,11 @@ type JsonPath =
 
   /// Returns a path to the named element of the referenced object element,
   ///   if it's not an object or named element doesn't exists returns a PathError
-  static member ( ? ) (path : JsonPath, name : string) : JsonPath =
+  static member inline ( ? ) (path : JsonPath, name : string) : JsonPath =
     path.Get name
 
   /// Evaluates the path producing the referenced scalar element (scalar meaning null, bool, number, string or error)
-  static member ( !! ) (path : JsonPath) : JsonScalar =
+  static member inline ( !! ) (path : JsonPath) : JsonScalar =
     path.Eval
 
 /// Creates a JsonPath object from a JSON document
@@ -389,3 +389,17 @@ type Json with
 
   /// Creates a JsonPath object from a JSON document
   member x.Query : JsonPath = makePath x
+
+module Infixes =
+
+  // These operators are provided as a workaround for the possible regression in F#4.1
+  //  https://github.com/Microsoft/visualfsharp/issues/2416
+
+  /// Returns a path to the named element of the referenced object element,
+  ///   if it's not an object or named element doesn't exists returns a PathError
+  let inline ( ? ) (path : JsonPath) (name : string) : JsonPath =
+    path.Get name
+
+  /// Evaluates the path producing the referenced scalar element (scalar meaning null, bool, number, string or error)
+  let inline ( !! ) (path : JsonPath) : JsonScalar =
+    path.Eval
