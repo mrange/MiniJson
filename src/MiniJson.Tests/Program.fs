@@ -927,8 +927,6 @@ let main argv =
     let dumper (s : string) = dump.WriteLine s
 #endif
 
-    let runningOnMono = Type.GetType ("Mono.Runtime") <> null
-
     let testSuites =
       [|
         if not runningOnMono then yield functionalReferenceTestCases
