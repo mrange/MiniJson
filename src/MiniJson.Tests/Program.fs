@@ -927,19 +927,21 @@ let main argv =
     let dumper (s : string) = dump.WriteLine s
 #endif
 
+    let runningOnMono = Type.GetType ("Mono.Runtime") <> null
+
     let testSuites =
       [|
-        functionalReferenceTestCases
+        if not runningOnMono then yield functionalReferenceTestCases
 //        functionalJilTestCases
-        functionalJsonNetTestCases
-        functionalFSharpDataTestCases
-        toStringTestCases
-        errorReportingTestCases
-        scalarToStringTestCases
-        pathTestCases
-        adaptorTestCases
+        yield functionalJsonNetTestCases
+        if not runningOnMono then yield functionalFSharpDataTestCases
+        yield toStringTestCases
+        yield errorReportingTestCases
+        yield scalarToStringTestCases
+        yield pathTestCases
+        yield adaptorTestCases
 #if !DEBUG
-        performanceTestCases
+        yield performanceTestCases
 #endif
       |]
 
