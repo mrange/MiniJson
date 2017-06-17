@@ -392,8 +392,9 @@ type Json with
 
 module Infixes =
 
-  // These operators are provided as a workaround for the possible regression in F#4.1
+  // These operators are provided as a workaround for regression in F#4.1
   //  https://github.com/Microsoft/visualfsharp/issues/2416
+  //  (Fixed as 2017-04-27)
 
   /// Returns a path to the named element of the referenced object element,
   ///   if it's not an object or named element doesn't exists returns a PathError
