@@ -1,5 +1,7 @@
 # MiniJson
 
+[![Build Status](https://travis-ci.org/mrange/MiniJson.svg?branch=master)](https://travis-ci.org/mrange/MiniJson)
+
 MiniJson is a [conforming](http://jsonlint.com) [JSON](http://json.org) parser for F# licensed under
 [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0)
 
