@@ -1,0 +1,11 @@
+language: csharp
+solution: MiniJson.sln
+sudo: false
+dist: trusty
+mono:
+  - latest
+before_install:
+  - cd ./src
+script:
+  - xbuild /p:Configuration=Debug MiniJson.sln
+  - mono ./MiniJson.Tests/bin/Debug/MiniJson.Tests.exe
