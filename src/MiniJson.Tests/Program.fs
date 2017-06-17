@@ -25,7 +25,8 @@ open System.Text
 open MiniJson
 open MiniJson.JsonModule
 open MiniJson.DynamicJsonModule
-open MiniJson.DynamicJsonModule.Infixes // These operators are provided as a workaround for the possible regression in F#4.1
+// These operators are provided as a workaround for the possible regression in F#4.1
+open MiniJson.DynamicJsonModule.Infixes
 open MiniJson.Adaptor
 open MiniJson.Tests.Test
 open MiniJson.Tests.TestCases
@@ -578,7 +579,7 @@ let toStringTestCases (dumper : string -> unit) =
     | Success v       ->
       check_eq noIndentOracle   (v.ToString ()    ) name
       check_eq noIndentOracle   (toString false v ) name
-      check_eq withIndentOracle (toString true v  ) name
+      if not linuxLineEnding then check_eq withIndentOracle (toString true v  ) name
 
     | Failure (_, _)  ->
       test_failuref "Parsing expected to succeed for '%s'" name
@@ -916,6 +917,8 @@ Unexpected: EOS"""
 let main argv =
   try
     highlight "Starting JSON testcases..."
+    infof "Running on mono: %A"   runningOnMono
+    infof "Linux line ending: %A" linuxLineEnding
 
     Environment.CurrentDirectory <- AppDomain.CurrentDomain.BaseDirectory
 
@@ -928,17 +931,17 @@ let main argv =
 
     let testSuites =
       [|
-        functionalReferenceTestCases
+        if not runningOnMono then yield functionalReferenceTestCases
 //        functionalJilTestCases
-        functionalJsonNetTestCases
-        functionalFSharpDataTestCases
-        toStringTestCases
-        errorReportingTestCases
-        scalarToStringTestCases
-        pathTestCases
-        adaptorTestCases
+        yield functionalJsonNetTestCases
+        if not runningOnMono then yield functionalFSharpDataTestCases
+        yield toStringTestCases
+        if not linuxLineEnding then yield errorReportingTestCases
+        yield scalarToStringTestCases
+        yield pathTestCases
+        yield adaptorTestCases
 #if !DEBUG
-        performanceTestCases
+        yield performanceTestCases
 #endif
       |]
 

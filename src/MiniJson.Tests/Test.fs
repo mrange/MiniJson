@@ -22,6 +22,9 @@ open Microsoft.FSharp.Core.Printf
 // ----------------------------------------------------------------------------------------------
 
 // ----------------------------------------------------------------------------------------------
+let runningOnMono   = Type.GetType ("Mono.Runtime") <> null
+let linuxLineEnding = Environment.NewLine = "\n"
+
 let mutable errors = 0
 
 let print (cc : ConsoleColor) (prelude : string) (msg : string) : unit =
